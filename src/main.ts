@@ -2,6 +2,7 @@ import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MarkerCallback, markerCallback } from './markerCallback';
+import { AirspaceStackControl, AltitudeSliderControl } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -48,6 +49,14 @@ L.control.scale({
     maxWidth: 300
 }).addTo(map);
 
+const stackControl = new AirspaceStackControl();
+stackControl.addTo(map);
+
+const sliderControl = new AltitudeSliderControl((ft) => {
+    stackControl.setAltitude(ft);
+});
+sliderControl.addTo(map);
+
 let currentMarker: L.Marker | null = null;
 let currentGeojsonLayer: L.GeoJSON | null = null;
 
@@ -93,6 +102,10 @@ async function onMapClick(
                 layer.bindPopup(`<b>${name}</b><br>${lower} – ${upper}<br>${status}`);
             },
         }).addTo(map);
+
+        stackControl.update(geojson.features);
+    } else {
+        stackControl.clear();
     }
 }
 
@@ -105,6 +118,7 @@ function clearAll(): void {
         currentGeojsonLayer.remove();
         currentGeojsonLayer = null;
     }
+    stackControl.clear();
 }
 
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));

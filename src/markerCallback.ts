@@ -34,6 +34,10 @@ interface AirspaceItem {
     hoursOfOperation?: HoursOfOperation;
 }
 
+function toFeet(limit: AltitudeLimit): number {
+    return limit.unit === 6 ? limit.value * 100 : limit.value;
+}
+
 function formatAltitude(limit: AltitudeLimit): string {
     if (limit.unit === 6) return `FL${limit.value}`;
     return `${limit.value} ft`;
@@ -87,6 +91,8 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                             icaoClass: a.icaoClass,
                             lowerLabel: a.lowerLimit ? formatAltitude(a.lowerLimit) : '?',
                             upperLabel: a.upperLimit ? formatAltitude(a.upperLimit) : '?',
+                            lowerFt: a.lowerLimit ? toFeet(a.lowerLimit) : 0,
+                            upperFt: a.upperLimit ? toFeet(a.upperLimit) : 0,
                             active,
                         },
                     };

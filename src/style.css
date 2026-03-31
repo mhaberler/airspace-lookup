@@ -9,3 +9,185 @@ body {
   z-index: 0;
   height: 100%;
 }
+
+/* ── Airspace Stack Card (right side) ── */
+
+.airspace-stack-control {
+  width: 10vw;
+  min-width: 100px;
+  height: 70vh;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+}
+
+.airspace-stack-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 4px 4px;
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+.airspace-stack-area {
+  position: relative;
+  flex: 1;
+  margin: 4px;
+  overflow: hidden;
+}
+
+/* altitude scale ticks */
+.airspace-stack-tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dotted #bbb;
+}
+.airspace-stack-tick::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 2px;
+  top: -12px;
+  font-size: 9px;
+  color: #888;
+}
+
+/* airspace blocks */
+.airspace-block {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.airspace-block:hover {
+  filter: brightness(1.15);
+}
+
+.airspace-block-active {
+  border-width: 2px;
+  border-style: solid;
+  z-index: 2;
+}
+
+.airspace-block-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #222;
+  padding: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-height: 100%;
+}
+
+.airspace-block-name {
+  pointer-events: none;
+}
+
+/* aircraft altitude line */
+.airspace-stack-aircraft {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid #e74c3c;
+  z-index: 10;
+  transition: bottom 0.15s ease;
+}
+
+.airspace-stack-aircraft-label {
+  position: absolute;
+  right: 0;
+  top: -16px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #e74c3c;
+  white-space: nowrap;
+  background: rgba(255,255,255,0.85);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+/* detail popup */
+.airspace-detail-popup {
+  position: absolute;
+  left: -220px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  z-index: 20;
+}
+
+.airspace-detail-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #888;
+}
+.airspace-detail-close:hover {
+  color: #333;
+}
+
+/* ── Altitude Slider (left side) ── */
+
+.altitude-slider-control {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 70vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.altitude-slider-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.altitude-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  flex: 1;
+  width: 28px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #e74c3c;
+}
+
+.altitude-slider-label {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 6px;
+  white-space: nowrap;
+  color: #e74c3c;
+}
