@@ -2,7 +2,7 @@ import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MarkerCallback, markerCallback } from './markerCallback';
-import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry } from './airspaceStack';
+import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -141,7 +141,8 @@ async function onMapClick(
                 const status = active
                     ? '<span style="color:green">ACTIVE</span>'
                     : '<span style="color:grey">INACTIVE</span>';
-                layer.bindPopup(`<b>${name}</b><br>${lower} – ${upper}<br>${status}`);
+                const cls = icaoClassName(feature.properties?.icaoClass ?? 7);
+                layer.bindPopup(`<b>${name}</b> (${cls})<br>${lower} – ${upper}<br>${status}`);
             },
         }).addTo(map);
 

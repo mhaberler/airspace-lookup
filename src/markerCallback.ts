@@ -1,3 +1,5 @@
+import { icaoClassName } from './airspaceStack';
+
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string;
 const DIST_METERS = 10;
 
@@ -73,7 +75,7 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                 const upper = a.upperLimit ? formatAltitude(a.upperLimit) : '?';
                 const active = a.hoursOfOperation ? isActive(a.hoursOfOperation) : true;
                 const status = active ? '<span style="color:green">ACTIVE</span>' : '<span style="color:grey">INACTIVE</span>';
-                return `<b>${a.name}</b> (type ${a.type}) — ${lower} / ${upper} — ${status}`;
+                return `<b>${a.name}</b> (${icaoClassName(a.icaoClass)}) — ${lower} / ${upper} — ${status}`;
             }).join('<br>')
             : `No airspaces within ${DIST_METERS} nm`;
 

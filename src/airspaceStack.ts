@@ -1,5 +1,14 @@
 import L from 'leaflet';
 
+const ICAO_CLASS_NAMES = [
+    'Class A', 'Class B', 'Class C', 'Class D',
+    'Class E', 'Class F', 'Class G', 'Other',
+];
+
+export function icaoClassName(icaoClass: number): string {
+    return ICAO_CLASS_NAMES[icaoClass] ?? `Unknown (${icaoClass})`;
+}
+
 const MIN_CEILING = 10_000; // feet – minimum stack ceiling
 const CEIL_STEP = 5_000;    // round ceiling up to this increment
 
@@ -267,7 +276,7 @@ export class AirspaceStackControl extends L.Control {
             <div class="airspace-detail-close">&times;</div>
             <b>${entry.name}</b><br>
             Type: ${entry.type}<br>
-            ICAO Class: ${entry.icaoClass}<br>
+            ${icaoClassName(entry.icaoClass)}<br>
             Lower: ${entry.lowerLabel} (${entry.lowerFt.toLocaleString()} ft)<br>
             Upper: ${entry.upperLabel} (${entry.upperFt.toLocaleString()} ft)<br>
             Status: ${activeHtml}
