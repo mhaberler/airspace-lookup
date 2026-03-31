@@ -1,11 +1,11 @@
-# leaflet-starter
+# airspace-lookup
 
 ![README02](img/README02.png)
 
-Start Leaflet easily.  
-- [Leaflet v1.9.4](http://leafletjs.com)  
-- [TypeScript v5.9.3](https://www.typescriptlang.org)  
-- [Vite v7.3.1](https://vitejs.dev)  
+Start Leaflet easily.
+- [Leaflet v1.9.4](http://leafletjs.com)
+- [TypeScript v5.9.3](https://www.typescriptlang.org)
+- [Vite v7.3.1](https://vitejs.dev)
 - node v24.4.1
 - npm v11.4.2
 
@@ -65,9 +65,9 @@ Copyright (c) 2018-2026 Yasunori Kirimoto
 ![README02](img/README02.png)
 
 Leafletを手軽に始める
-- [Leaflet v1.9.4](http://leafletjs.com)  
-- [TypeScript v5.9.3](https://www.typescriptlang.org)  
-- [Vite v7.3.1](https://vitejs.dev)  
+- [Leaflet v1.9.4](http://leafletjs.com)
+- [TypeScript v5.9.3](https://www.typescriptlang.org)
+- [Vite v7.3.1](https://vitejs.dev)
 - node v24.4.1
 - npm v11.4.2
 

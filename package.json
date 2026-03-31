@@ -1,11 +1,11 @@
 {
-  "name": "leaflet-starter",
+  "name": "airspace-lookup",
   "version": "1.9.4",
   "description": "",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:ghpages": "VITE_BASE=/leaflet-starter/ VITE_OUTDIR=docs npm run build",
+    "build:ghpages": "VITE_BASE=/airspace-lookup/ VITE_OUTDIR=docs npm run build",
     "preview": "vite preview"
   },
   "keywords": [],
