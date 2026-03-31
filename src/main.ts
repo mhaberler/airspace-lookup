@@ -4,9 +4,26 @@ import L from 'leaflet';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
+const openFlightMapsOverlay = {
+    key: 'openflightmaps-overlay',
+    name: 'OpenFlightMaps',
+    url: 'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
+    attr: '(c) <a href="https://openflightmaps.org/" target="_blank" rel="noopener noreferrer">Open Flightmaps association</a>, (c) OpenStreetMap contributors, NASA elevation data',
+    maxZoom: 16,
+    opacity: 0.9,
+    zIndex: 2,
+} as const;
+
 const m_mono = L.tileLayer(
     'https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
+});
+
+const openFlightMapsLayer = L.tileLayer(openFlightMapsOverlay.url, {
+    attribution: openFlightMapsOverlay.attr,
+    maxZoom: openFlightMapsOverlay.maxZoom,
+    opacity: openFlightMapsOverlay.opacity,
+    zIndex: openFlightMapsOverlay.zIndex,
 });
 
 const map = L.map('map', {
@@ -15,6 +32,15 @@ const map = L.map('map', {
     zoomControl: true,
     layers: [m_mono]
 });
+
+L.control.layers(
+    {
+        OpenStreetMap: m_mono,
+    },
+    {
+        [openFlightMapsOverlay.name]: openFlightMapsLayer,
+    },
+).addTo(map);
 
 L.control.scale({
     imperial: false,
