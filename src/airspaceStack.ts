@@ -41,6 +41,7 @@ export class AirspaceStackControl extends L.Control {
     private aircraftLine!: HTMLDivElement;
     private aircraftLabel!: HTMLDivElement;
     private entries: AirspaceEntry[] = [];
+    private columnOf: number[] = [];   // column index per entry
     private blocks: HTMLDivElement[] = [];
     private aircraftAlt = 0;
 
@@ -110,21 +111,36 @@ export class AirspaceStackControl extends L.Control {
         for (const b of this.blocks) b.remove();
         this.blocks = [];
 
-        const count = this.entries.length;
-        if (count === 0) return;
+        if (this.entries.length === 0) { this.columnOf = []; return; }
 
-        // each airspace gets an equal-width column
-        const colWidth = 100 / count;
+        // assign columns: contiguous airspaces (one's upperFt == another's lowerFt) share a column
+        const columnTops: number[] = [];  // upperFt of the topmost entry in each column
+        this.columnOf = [];
+
+        for (const entry of this.entries) {
+            const col = columnTops.findIndex(top => top === entry.lowerFt);
+            if (col >= 0) {
+                this.columnOf.push(col);
+                columnTops[col] = entry.upperFt;
+            } else {
+                this.columnOf.push(columnTops.length);
+                columnTops.push(entry.upperFt);
+            }
+        }
+
+        const numCols = columnTops.length;
+        const colWidth = 100 / numCols;
 
         this.entries.forEach((entry, i) => {
             const bottomPct = (entry.lowerFt / MAX_ALT) * 100;
             const topPct = (entry.upperFt / MAX_ALT) * 100;
             const heightPct = topPct - bottomPct;
+            const col = this.columnOf[i];
 
             const block = L.DomUtil.create('div', 'airspace-block', this.stackArea) as HTMLDivElement;
             block.style.bottom = `${bottomPct}%`;
             block.style.height = `${heightPct}%`;
-            block.style.left = `${i * colWidth}%`;
+            block.style.left = `${col * colWidth}%`;
             block.style.width = `${colWidth}%`;
             block.style.backgroundColor = BLOCK_COLORS[i % BLOCK_COLORS.length];
             block.style.borderColor = BLOCK_COLORS[i % BLOCK_COLORS.length].replace('0.35', '0.8');
@@ -132,7 +148,6 @@ export class AirspaceStackControl extends L.Control {
             const label = L.DomUtil.create('div', 'airspace-block-label', block) as HTMLDivElement;
             label.innerHTML = `<span class="airspace-block-name">${entry.name}</span>`;
 
-            // click popup
             block.addEventListener('click', () => {
                 this.showDetail(entry, block);
             });

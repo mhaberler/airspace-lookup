@@ -65,6 +65,7 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
         const data = await res.json();
 
         const items: AirspaceItem[] = data.items ?? [];
+        items.sort((a, b) => (a.lowerLimit ? toFeet(a.lowerLimit) : 0) - (b.lowerLimit ? toFeet(b.lowerLimit) : 0));
 
         const popupText = items.length
             ? items.map(a => {
