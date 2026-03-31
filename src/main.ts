@@ -2,7 +2,7 @@ import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MarkerCallback, markerCallback } from './markerCallback';
-import { AirspaceStackControl, AltitudeSliderControl } from './airspaceStack';
+import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -49,16 +49,57 @@ L.control.scale({
     maxWidth: 300
 }).addTo(map);
 
-const stackControl = new AirspaceStackControl();
-stackControl.addTo(map);
+let currentMarker: L.Marker | null = null;
+let currentGeojsonLayer: L.GeoJSON | null = null;
+let highlightedLayer: L.Path | null = null;
+
+function resetHighlight(): void {
+    if (highlightedLayer) {
+        const feature = (highlightedLayer as any).feature as GeoJSON.Feature | undefined;
+        const active = feature?.properties?.active ?? true;
+        highlightedLayer.setStyle({
+            color: active ? '#e74c3c' : '#888888',
+            weight: 2,
+            fillOpacity: active ? 0.15 : 0.08,
+            dashArray: active ? undefined : '5, 5',
+        });
+        highlightedLayer = null;
+    }
+}
+
+function highlightAirspaceOnMap(entry: AirspaceEntry): void {
+    resetHighlight();
+    if (!currentGeojsonLayer) return;
+
+    currentGeojsonLayer.eachLayer((layer) => {
+        const feature = (layer as any).feature as GeoJSON.Feature | undefined;
+        if (!feature) return;
+        const props = feature.properties;
+        if (props?.name === entry.name &&
+            props?.lowerFt === entry.lowerFt &&
+            props?.upperFt === entry.upperFt) {
+            const path = layer as L.Path;
+            path.setStyle({
+                color: '#f1c40f',
+                weight: 4,
+                fillOpacity: 0.35,
+            });
+            path.bringToFront();
+            highlightedLayer = path;
+        }
+    });
+}
 
 const sliderControl = new AltitudeSliderControl((ft) => {
     stackControl.setAltitude(ft);
 });
-sliderControl.addTo(map);
 
-let currentMarker: L.Marker | null = null;
-let currentGeojsonLayer: L.GeoJSON | null = null;
+const stackControl = new AirspaceStackControl({
+    onMaxAltChanged: (ft) => sliderControl.setMax(ft),
+    onBlockClicked: (entry) => highlightAirspaceOnMap(entry),
+});
+stackControl.addTo(map);
+sliderControl.addTo(map);
 
 async function onMapClick(
     e: L.LeafletMouseEvent,
@@ -76,6 +117,7 @@ async function onMapClick(
     const { popupText, geojson } = await callback(lat, lng);
     currentMarker.bindPopup(popupText).openPopup();
 
+    resetHighlight();
     if (currentGeojsonLayer) {
         currentGeojsonLayer.remove();
         currentGeojsonLayer = null;
@@ -114,6 +156,7 @@ function clearAll(): void {
         currentMarker.remove();
         currentMarker = null;
     }
+    resetHighlight();
     if (currentGeojsonLayer) {
         currentGeojsonLayer.remove();
         currentGeojsonLayer = null;

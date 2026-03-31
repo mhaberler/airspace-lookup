@@ -13,7 +13,6 @@ body {
 /* ── Airspace Stack Card (right side) ── */
 
 .airspace-stack-control {
-  width: 10vw;
   min-width: 100px;
   height: 80vh;
   background: rgba(255, 255, 255, 0.92);
