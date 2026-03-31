@@ -73,11 +73,24 @@ async function onMapClick(
     }
     if (geojson) {
         currentGeojsonLayer = L.geoJSON(geojson, {
-            style: { color: '#e74c3c', weight: 2, fillOpacity: 0.15 },
+            style: (feature) => {
+                const active = feature?.properties?.active ?? true;
+                return {
+                    color: active ? '#e74c3c' : '#888888',
+                    weight: 2,
+                    fillOpacity: active ? 0.15 : 0.08,
+                    dashArray: active ? undefined : '5, 5',
+                };
+            },
             onEachFeature: (feature, layer) => {
                 const name = feature.properties?.name ?? 'Airspace';
-                const type = feature.properties?.type ?? '';
-                layer.bindPopup(`<b>${name}</b><br>${type}`);
+                const lower = feature.properties?.lowerLabel ?? '?';
+                const upper = feature.properties?.upperLabel ?? '?';
+                const active = feature.properties?.active ?? true;
+                const status = active
+                    ? '<span style="color:green">ACTIVE</span>'
+                    : '<span style="color:grey">INACTIVE</span>';
+                layer.bindPopup(`<b>${name}</b><br>${lower} – ${upper}<br>${status}`);
             },
         }).addTo(map);
     }
