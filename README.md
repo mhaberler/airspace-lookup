@@ -2,9 +2,7 @@
 
 Interactive map tool for querying airspace data at any location using the [OpenAIP](https://www.openaip.net/) API. Click anywhere on the map to see which airspaces cover that point, with altitude boundaries, operating hours, and active/inactive status.
 
-
-
-![screenshot.png](/images/screenshot.png)
+![screenshot.png](/img/screenshot.png)
 
 ## Features
 
