@@ -69,27 +69,54 @@ export function airspaceTypeName(type: number): string {
 const MIN_CEILING = 10_000; // feet – minimum stack ceiling
 const CEIL_STEP = 5_000;    // round ceiling up to this increment
 
-const BLOCK_COLORS = [
-    'rgba(52, 152, 219, 0.35)',   // blue
-    'rgba(46, 204, 113, 0.35)',   // green
-    'rgba(155, 89, 182, 0.35)',   // purple
-    'rgba(230, 126, 34, 0.35)',   // orange
-    'rgba(241, 196, 15, 0.35)',   // yellow
-    'rgba(231, 76, 60, 0.35)',    // red
-    'rgba(26, 188, 156, 0.35)',   // teal
-    'rgba(127, 140, 141, 0.35)',  // grey
-];
+// Aviation-standard color palette (hex)
+// Class B/C/D (Controlled): blue   Class E: magenta
+// Prohibited/Restricted/Danger: red  Glider/Parachute: green
+// Warning/Caution: amber   Other/Unknown: grey
+const ICAO_CLASS_HEX: Record<number, string> = {
+    0: '#CC0000',   // Class A – red/dark (no VFR)
+    1: '#1A73E8',   // Class B – blue
+    2: '#1A73E8',   // Class C – blue
+    3: '#22A7E0',   // Class D – cyan-blue
+    4: '#E91E63',   // Class E – magenta
+    5: '#E91E63',   // Class F – magenta
+    6: '#808080',   // Class G – grey (uncontrolled)
+    7: '#808080',   // Other – grey
+    8: '#808080',   // SUA – grey (overridden by type)
+};
 
-const HIGHLIGHT_COLORS = [
-    'rgba(52, 152, 219, 0.7)',
-    'rgba(46, 204, 113, 0.7)',
-    'rgba(155, 89, 182, 0.7)',
-    'rgba(230, 126, 34, 0.7)',
-    'rgba(241, 196, 15, 0.7)',
-    'rgba(231, 76, 60, 0.7)',
-    'rgba(26, 188, 156, 0.7)',
-    'rgba(127, 140, 141, 0.7)',
-];
+// Airspace types that override ICAO class color
+const TYPE_HEX_OVERRIDES: Record<number, string> = {
+    1: '#FF0000',   // Restricted – red
+    2: '#FFB300',   // Danger – amber
+    3: '#FF0000',   // Prohibited – red
+    5: '#E91E63',   // TMZ – magenta
+    17: '#FFB300',  // Alert Area – amber
+    18: '#FFB300',  // Warning Area – amber
+    21: '#008000',  // Gliding Sector – green
+    25: '#FFB300',  // MTA – amber
+    28: '#008000',  // Aerial Sporting/Recreational – green
+};
+
+// Activity types that override color (parachuting, hang gliding, etc.)
+const ACTIVITY_HEX_OVERRIDES: Record<number, string> = {
+    1: '#008000',   // Parachuting – green
+    5: '#008000',   // Hang Gliding/Paragliding – green
+};
+
+/** Get the aviation-standard hex color for an airspace entry. */
+export function airspaceColor(entry: { type: number; icaoClass: number; activity: number }): string {
+    if (entry.activity && ACTIVITY_HEX_OVERRIDES[entry.activity]) return ACTIVITY_HEX_OVERRIDES[entry.activity];
+    if (TYPE_HEX_OVERRIDES[entry.type] !== undefined) return TYPE_HEX_OVERRIDES[entry.type];
+    return ICAO_CLASS_HEX[entry.icaoClass] ?? '#808080';
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export interface AirspaceEntry {
     name: string;
@@ -249,8 +276,9 @@ export class AirspaceStackControl extends L.Control {
             block.style.height = `${heightPct}%`;
             block.style.left = `${displayCol * colWidth}%`;
             block.style.width = `${colWidth}%`;
-            block.style.backgroundColor = BLOCK_COLORS[i % BLOCK_COLORS.length];
-            block.style.borderColor = BLOCK_COLORS[i % BLOCK_COLORS.length].replace('0.35', '0.8');
+            const hex = airspaceColor(entry);
+            block.style.backgroundColor = hexToRgba(hex, 0.35);
+            block.style.borderColor = hexToRgba(hex, 0.8);
 
             const label = L.DomUtil.create('div', 'airspace-block-label', block) as HTMLDivElement;
             label.innerHTML = `<span class="airspace-block-name">${entry.name}</span>`;
@@ -314,11 +342,12 @@ export class AirspaceStackControl extends L.Control {
             const block = this.blocks[i];
             if (!block) return;
             const inside = this.aircraftAlt >= entry.lowerFt && this.aircraftAlt < entry.upperFt;
+            const hex = airspaceColor(entry);
             if (inside) {
-                block.style.backgroundColor = HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length];
+                block.style.backgroundColor = hexToRgba(hex, 0.7);
                 block.classList.add('airspace-block-active');
             } else {
-                block.style.backgroundColor = BLOCK_COLORS[i % BLOCK_COLORS.length];
+                block.style.backgroundColor = hexToRgba(hex, 0.35);
                 block.classList.remove('airspace-block-active');
             }
         });

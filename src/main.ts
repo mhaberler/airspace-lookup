@@ -2,7 +2,7 @@ import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MarkerCallback, markerCallback } from './markerCallback';
-import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName } from './airspaceStack';
+import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -53,16 +53,25 @@ let currentMarker: L.Marker | null = null;
 let currentGeojsonLayer: L.GeoJSON | null = null;
 let highlightedLayer: L.Path | null = null;
 
+function featureStyle(props: any): L.PathOptions {
+    const active = props?.active ?? true;
+    const hex = airspaceColor({
+        type: props?.type ?? 0,
+        icaoClass: props?.icaoClass ?? 7,
+        activity: props?.activity ?? 0,
+    });
+    return {
+        color: active ? hex : '#888888',
+        weight: 2,
+        fillOpacity: active ? 0.2 : 0.08,
+        dashArray: active ? undefined : '5, 5',
+    };
+}
+
 function resetHighlight(): void {
     if (highlightedLayer) {
         const feature = (highlightedLayer as any).feature as GeoJSON.Feature | undefined;
-        const active = feature?.properties?.active ?? true;
-        highlightedLayer.setStyle({
-            color: active ? '#e74c3c' : '#888888',
-            weight: 2,
-            fillOpacity: active ? 0.15 : 0.08,
-            dashArray: active ? undefined : '5, 5',
-        });
+        highlightedLayer.setStyle(featureStyle(feature?.properties));
         highlightedLayer = null;
     }
 }
@@ -124,15 +133,7 @@ async function onMapClick(
     }
     if (geojson) {
         currentGeojsonLayer = L.geoJSON(geojson, {
-            style: (feature) => {
-                const active = feature?.properties?.active ?? true;
-                return {
-                    color: active ? '#e74c3c' : '#888888',
-                    weight: 2,
-                    fillOpacity: active ? 0.15 : 0.08,
-                    dashArray: active ? undefined : '5, 5',
-                };
-            },
+            style: (feature) => featureStyle(feature?.properties),
             onEachFeature: (feature, layer) => {
                 const name = feature.properties?.name ?? 'Airspace';
                 const lower = feature.properties?.lowerLabel ?? '?';
