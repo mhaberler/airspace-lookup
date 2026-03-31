@@ -46,3 +46,39 @@ L.control.scale({
     imperial: false,
     maxWidth: 300
 }).addTo(map);
+
+type MarkerCallback = (lat: number, lng: number) => Promise<string> | string;
+
+let currentMarker: L.Marker | null = null;
+
+async function onMapClick(
+    e: L.LeafletMouseEvent,
+    callback: MarkerCallback,
+): Promise<void> {
+    const { lat, lng } = e.latlng;
+    console.log(`Map clicked: lat=${lat.toFixed(6)}, lng=${lng.toFixed(6)}`);
+
+    if (currentMarker) {
+        currentMarker.setLatLng(e.latlng);
+    } else {
+        currentMarker = L.marker(e.latlng).addTo(map);
+    }
+
+    const popupText = await callback(lat, lng);
+    currentMarker.bindPopup(popupText).openPopup();
+}
+
+function removeMarker(): void {
+    if (currentMarker) {
+        currentMarker.remove();
+        currentMarker = null;
+    }
+}
+
+// Example callback — replace with real airspace lookup logic
+const markerCallback: MarkerCallback = (lat, lng) => {
+    return `Position: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+};
+
+map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
+map.on('contextmenu', () => removeMarker());
