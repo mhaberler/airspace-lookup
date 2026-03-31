@@ -45,7 +45,7 @@ export class AirspaceStackControl extends L.Control {
     private aircraftAlt = 0;
 
     constructor() {
-        super({ position: 'topright' });
+        super({ position: 'bottomright' });
     }
 
     onAdd(_map: L.Map): HTMLElement {
@@ -188,7 +188,7 @@ export class AltitudeSliderControl extends L.Control {
     private onChange: (ft: number) => void;
 
     constructor(onChange: (ft: number) => void) {
-        super({ position: 'topleft' });
+        super({ position: 'bottomleft' });
         this.onChange = onChange;
     }
 
