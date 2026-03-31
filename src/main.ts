@@ -1,6 +1,7 @@
 import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { MarkerCallback, markerCallback } from './markerCallback';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -47,9 +48,8 @@ L.control.scale({
     maxWidth: 300
 }).addTo(map);
 
-type MarkerCallback = (lat: number, lng: number) => Promise<string> | string;
-
 let currentMarker: L.Marker | null = null;
+let currentGeojsonLayer: L.GeoJSON | null = null;
 
 async function onMapClick(
     e: L.LeafletMouseEvent,
@@ -64,21 +64,35 @@ async function onMapClick(
         currentMarker = L.marker(e.latlng).addTo(map);
     }
 
-    const popupText = await callback(lat, lng);
+    const { popupText, geojson } = await callback(lat, lng);
     currentMarker.bindPopup(popupText).openPopup();
+
+    if (currentGeojsonLayer) {
+        currentGeojsonLayer.remove();
+        currentGeojsonLayer = null;
+    }
+    if (geojson) {
+        currentGeojsonLayer = L.geoJSON(geojson, {
+            style: { color: '#e74c3c', weight: 2, fillOpacity: 0.15 },
+            onEachFeature: (feature, layer) => {
+                const name = feature.properties?.name ?? 'Airspace';
+                const type = feature.properties?.type ?? '';
+                layer.bindPopup(`<b>${name}</b><br>${type}`);
+            },
+        }).addTo(map);
+    }
 }
 
-function removeMarker(): void {
+function clearAll(): void {
     if (currentMarker) {
         currentMarker.remove();
         currentMarker = null;
     }
+    if (currentGeojsonLayer) {
+        currentGeojsonLayer.remove();
+        currentGeojsonLayer = null;
+    }
 }
 
-// Example callback — replace with real airspace lookup logic
-const markerCallback: MarkerCallback = (lat, lng) => {
-    return `Position: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-};
-
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
-map.on('contextmenu', () => removeMarker());
+map.on('contextmenu', () => clearAll());
