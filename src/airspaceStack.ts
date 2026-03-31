@@ -2,11 +2,68 @@ import L from 'leaflet';
 
 const ICAO_CLASS_NAMES = [
     'Class A', 'Class B', 'Class C', 'Class D',
-    'Class E', 'Class F', 'Class G', 'Other',
+    'Class E', 'Class F', 'Class G', 'Other', 'SUA'
 ];
 
 export function icaoClassName(icaoClass: number): string {
     return ICAO_CLASS_NAMES[icaoClass] ?? `Unknown (${icaoClass})`;
+}
+
+const AIRSPACE_TYPE_NAMES = [
+    'Other',                                    // 0
+    'Restricted',                               // 1
+    'Danger',                                   // 2
+    'Prohibited',                               // 3
+    'CTR',                                      // 4
+    'TMZ',                                      // 5
+    'RMZ',                                      // 6
+    'TMA',                                      // 7
+    'TRA',                                      // 8
+    'TSA',                                      // 9
+    'FIR',                                      // 10
+    'UIR',                                      // 11
+    'ADIZ',                                     // 12
+    'ATZ',                                      // 13
+    'MATZ',                                     // 14
+    'Airway',                                   // 15
+    'MTR',                                      // 16
+    'Alert Area',                               // 17
+    'Warning Area',                             // 18
+    'Protected Area',                           // 19
+    'HTZ',                                      // 20
+    'Gliding Sector',                           // 21
+    'TRP',                                      // 22
+    'TIZ',                                      // 23
+    'TIA',                                      // 24
+    'MTA',                                      // 25
+    'CTA',                                      // 26
+    'ACC',                                      // 27
+    'Aerial Sporting/Recreational',             // 28
+    'Low Altitude Overflight Restriction',      // 29
+    'MRT',                                      // 30
+    'TFR',                                      // 31
+    'VFR Sector',                               // 32
+    'FIS Sector',                               // 33
+    'LTA',                                      // 34
+    'UTA',                                      // 35
+    'MCTR',                                     // 36
+];
+
+const ACTIVITY_NAMES = [
+    'None',                         // 0
+    'Parachuting',                  // 1
+    'Aerobatics',                   // 2
+    'Aeroclub/Aerial Work',         // 3
+    'ULM',                          // 4
+    'Hang Gliding/Paragliding',     // 5
+];
+
+export function activityName(activity: number): string {
+    return ACTIVITY_NAMES[activity] ?? `Unknown (${activity})`;
+}
+
+export function airspaceTypeName(type: number): string {
+    return AIRSPACE_TYPE_NAMES[type] ?? `Unknown (${type})`;
 }
 
 const MIN_CEILING = 10_000; // feet – minimum stack ceiling
@@ -42,6 +99,8 @@ export interface AirspaceEntry {
     upperFt: number;
     lowerLabel: string;
     upperLabel: string;
+    activity: number;
+    flags: string[];
     active: boolean;
 }
 
@@ -97,6 +156,8 @@ export class AirspaceStackControl extends L.Control {
             upperFt: f.properties?.upperFt ?? 0,
             lowerLabel: f.properties?.lowerLabel ?? '?',
             upperLabel: f.properties?.upperLabel ?? '?',
+            activity: f.properties?.activity ?? 0,
+            flags: f.properties?.flags ?? [],
             active: f.properties?.active ?? true,
         }));
 
@@ -275,11 +336,10 @@ export class AirspaceStackControl extends L.Control {
         popup.innerHTML = `
             <div class="airspace-detail-close">&times;</div>
             <b>${entry.name}</b><br>
-            Type: ${entry.type}<br>
-            ${icaoClassName(entry.icaoClass)}<br>
+            ${airspaceTypeName(entry.type)}, ${icaoClassName(entry.icaoClass)}<br>${entry.activity ? `            ${activityName(entry.activity)}<br>` : ''}
             Lower: ${entry.lowerLabel} (${entry.lowerFt.toLocaleString()} ft)<br>
             Upper: ${entry.upperLabel} (${entry.upperFt.toLocaleString()} ft)<br>
-            Status: ${activeHtml}
+            Status: ${activeHtml}${entry.flags.length ? `<br>${entry.flags.join(', ')}` : ''}
         `;
         popup.querySelector('.airspace-detail-close')!.addEventListener('click', () => popup.remove());
     }

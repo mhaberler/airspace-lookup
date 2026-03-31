@@ -1,4 +1,4 @@
-import { icaoClassName } from './airspaceStack';
+import { icaoClassName, airspaceTypeName, activityName } from './airspaceStack';
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string;
 const DIST_METERS = 10;
@@ -34,6 +34,12 @@ interface AirspaceItem {
     lowerLimit?: AltitudeLimit;
     upperLimit?: AltitudeLimit;
     hoursOfOperation?: HoursOfOperation;
+    activity?: number;
+    onDemand?: boolean;
+    onRequest?: boolean;
+    byNotam?: boolean;
+    specialAgreement?: boolean;
+    requestCompliance?: boolean;
 }
 
 function toFeet(limit: AltitudeLimit): number {
@@ -57,6 +63,18 @@ function isActive(hours: HoursOfOperation): boolean {
     return current >= entry.startTime && current < entry.endTime;
 }
 
+const FLAG_LABELS: [keyof AirspaceItem, string][] = [
+    ['onDemand', 'On Demand'],
+    ['onRequest', 'On Request'],
+    ['byNotam', 'By NOTAM'],
+    ['specialAgreement', 'Special Agreement'],
+    ['requestCompliance', 'Request Compliance'],
+];
+
+function activeFlags(a: AirspaceItem): string[] {
+    return FLAG_LABELS.filter(([key]) => a[key]).map(([, label]) => label);
+}
+
 export const markerCallback: MarkerCallback = async (lat, lng) => {
     const url = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${DIST_METERS}&apiKey=${API_KEY}`;
     console.log('OpenAIP request:', url);
@@ -75,7 +93,10 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                 const upper = a.upperLimit ? formatAltitude(a.upperLimit) : '?';
                 const active = a.hoursOfOperation ? isActive(a.hoursOfOperation) : true;
                 const status = active ? '<span style="color:green">ACTIVE</span>' : '<span style="color:grey">INACTIVE</span>';
-                return `<b>${a.name}</b> (${icaoClassName(a.icaoClass)}) — ${lower} / ${upper} — ${status}`;
+                const act = a.activity ? ` – ${activityName(a.activity)}` : '';
+                const flags = activeFlags(a);
+                const flagsHtml = flags.length ? ` [${flags.join(', ')}]` : '';
+                return `<b>${a.name}</b> (${airspaceTypeName(a.type)}, ${icaoClassName(a.icaoClass)}${act}) — ${lower} / ${upper} — ${status}${flagsHtml}`;
             }).join('<br>')
             : `No airspaces within ${DIST_METERS} nm`;
 
@@ -96,6 +117,8 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                             upperLabel: a.upperLimit ? formatAltitude(a.upperLimit) : '?',
                             lowerFt: a.lowerLimit ? toFeet(a.lowerLimit) : 0,
                             upperFt: a.upperLimit ? toFeet(a.upperLimit) : 0,
+                            ...(a.activity ? { activity: a.activity } : {}),
+                            flags: activeFlags(a),
                             active,
                         },
                     };
