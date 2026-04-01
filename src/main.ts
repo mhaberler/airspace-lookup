@@ -21,12 +21,52 @@ const m_mono = L.tileLayer(
     attribution: '&copy; OpenStreetMap contributors',
 });
 
+const m_topo = L.tileLayer(
+    'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenTopoMap contributors',
+    maxZoom: 17,
+});
+
+const m_ortho = L.tileLayer(
+    'https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
+    attribution: '&copy; basemap.at',
+    maxZoom: 18,
+});
+
 const openFlightMapsLayer = L.tileLayer(openFlightMapsOverlay.url, {
     attribution: openFlightMapsOverlay.attr,
     maxZoom: openFlightMapsOverlay.maxZoom,
     opacity: openFlightMapsOverlay.opacity,
     zIndex: openFlightMapsOverlay.zIndex,
 });
+
+const skywaysLayer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=mah.priv.at', {
+    attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
+    maxNativeZoom: 13,
+    maxZoom: 18,
+    tms: true,
+    zIndex: 3,
+});
+
+const thermalsLayer = L.tileLayer('https://thermal.kk7.ch/tiles/thermals_jul_07/{z}/{x}/{y}.png?src=mah.priv.at', {
+    attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
+    maxNativeZoom: 12,
+    maxZoom: 18,
+    tms: true,
+    zIndex: 4,
+});
+
+// layer key ↔ object mappings for URL serialization
+const baseLayers: Record<string, L.TileLayer> = {
+    osm: m_mono,
+    topo: m_topo,
+    ortho: m_ortho,
+};
+const overlayLayers: Record<string, L.TileLayer> = {
+    ofm: openFlightMapsLayer,
+    skyways: skywaysLayer,
+    thermals: thermalsLayer,
+};
 
 const map = L.map('map', {
     center: [47,15],
@@ -38,9 +78,13 @@ const map = L.map('map', {
 L.control.layers(
     {
         OpenStreetMap: m_mono,
+        OpenTopoMap: m_topo,
+        'Austria Orthophoto': m_ortho,
     },
     {
         [openFlightMapsOverlay.name]: openFlightMapsLayer,
+        'Skyways': skywaysLayer,
+        'Thermals Jul 07': thermalsLayer,
     },
 ).addTo(map);
 
@@ -186,6 +230,14 @@ function updateUrl(): void {
     params.set('z', String(map.getZoom()));
     const alt = sliderControl.getValue();
     if (alt > 0) params.set('alt', String(alt));
+    // base layer
+    const baseKey = Object.entries(baseLayers).find(([, layer]) => map.hasLayer(layer))?.[0];
+    if (baseKey && baseKey !== 'osm') params.set('base', baseKey);
+    // active overlays
+    const activeOverlays = Object.entries(overlayLayers)
+        .filter(([, layer]) => map.hasLayer(layer))
+        .map(([key]) => key);
+    if (activeOverlays.length) params.set('overlays', activeOverlays.join(','));
     history.replaceState(null, '', `${location.pathname}?${params}`);
 }
 
@@ -266,6 +318,9 @@ function clearAll(): void {
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
 map.on('contextmenu', () => clearAll());
 map.on('zoomend', () => updateUrl());
+map.on('baselayerchange', () => updateUrl());
+map.on('overlayadd', () => updateUrl());
+map.on('overlayremove', () => updateUrl());
 
 // ── URL parameter deep-link ──
 {
@@ -281,5 +336,18 @@ map.on('zoomend', () => updateUrl());
     }
     if (!isNaN(alt) && alt > 0) {
         sliderControl.setValue(alt);
+    }
+    // restore base layer
+    const base = params.get('base');
+    if (base && baseLayers[base]) {
+        map.removeLayer(m_mono);
+        map.addLayer(baseLayers[base]);
+    }
+    // restore overlays
+    const overlays = params.get('overlays');
+    if (overlays) {
+        for (const key of overlays.split(',')) {
+            if (overlayLayers[key]) map.addLayer(overlayLayers[key]);
+        }
     }
 }
