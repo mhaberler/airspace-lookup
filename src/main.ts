@@ -63,7 +63,11 @@ const HomeControl = L.Control.extend({
         L.DomEvent.on(a, 'click', (e) => {
             L.DomEvent.preventDefault(e);
             navigator.geolocation.getCurrentPosition(
-                (pos) => _map.setView([pos.coords.latitude, pos.coords.longitude], 12),
+                (pos) => {
+                    const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                    _map.setView(latlng, 12);
+                    _map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
+                },
                 (err) => console.warn('Geolocation error:', err.message),
                 { enableHighAccuracy: true, timeout: 10_000 },
             );
