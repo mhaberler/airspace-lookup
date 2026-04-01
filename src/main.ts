@@ -1,7 +1,7 @@
 import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MarkerCallback, markerCallback, airportPopupHtml, airportTypeName } from './markerCallback';
+import { MarkerCallback, markerCallback, fetchAirports, airportPopupHtml, airportTypeName } from './markerCallback';
 import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
@@ -278,7 +278,7 @@ async function onMapClick(
         currentMarker = L.marker(e.latlng).addTo(map);
     }
 
-    const { popupText, geojson, airports } = await callback(lat, lng);
+    const { popupText, geojson } = await callback(lat, lng);
     currentMarker.bindPopup(popupText).openPopup();
 
     resetHighlight();
@@ -312,10 +312,29 @@ async function onMapClick(
         stackControl.clear();
     }
 
-    // ── Airport markers ──────────────────────────────────────────────────
+}
+
+function clearAll(): void {
+    if (currentMarker) {
+        currentMarker.remove();
+        currentMarker = null;
+    }
+    resetHighlight();
+    if (currentGeojsonLayer) {
+        currentGeojsonLayer.remove();
+        currentGeojsonLayer = null;
+    }
+    stackControl.clear();
+}
+
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function refreshAirports(): Promise<void> {
+    const { lat, lng } = map.getCenter();
+    const airports = await fetchAirports(lat, lng);
     for (const m of airportMarkers) m.remove();
     airportMarkers = [];
-    for (const airport of airports.filter(a => a.frequencies?.length)) {
+    for (const airport of airports) {
         const [lngA, latA] = airport.geometry.coordinates;
         const color = airportColor(airport.type);
         const marker = L.circleMarker([latA, lngA], {
@@ -335,24 +354,14 @@ async function onMapClick(
     }
 }
 
-function clearAll(): void {
-    if (currentMarker) {
-        currentMarker.remove();
-        currentMarker = null;
-    }
-    resetHighlight();
-    if (currentGeojsonLayer) {
-        currentGeojsonLayer.remove();
-        currentGeojsonLayer = null;
-    }
-    for (const m of airportMarkers) m.remove();
-    airportMarkers = [];
-    stackControl.clear();
+function scheduleRefreshAirports(): void {
+    if (refreshTimer !== null) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => { refreshTimer = null; refreshAirports(); }, 500);
 }
 
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
 map.on('contextmenu', () => clearAll());
-map.on('zoomend', () => updateUrl());
+map.on('moveend', () => { updateUrl(); scheduleRefreshAirports(); });
 map.on('baselayerchange', () => updateUrl());
 map.on('overlayadd', () => updateUrl());
 map.on('overlayremove', () => updateUrl());
@@ -386,3 +395,5 @@ map.on('overlayremove', () => updateUrl());
         }
     }
 }
+
+refreshAirports();

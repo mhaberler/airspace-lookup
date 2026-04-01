@@ -2,7 +2,6 @@ import { icaoClassName, airspaceTypeName, activityName } from './airspaceStack';
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string;
 const DIST_METERS = 10;
-const AIRPORT_DIST_METERS = 100_000;
 
 // ── Airport type names ──────────────────────────────────────────────────────
 const AIRPORT_TYPE_NAMES: Record<number, string> = {
@@ -147,7 +146,7 @@ export function airportPopupHtml(a: AirportItem): string {
     return `<b>${a.name}</b>${icao}${iata}<br>${airportTypeName(a.type)}${elev}${flagsHtml}${runwaysHtml}${freqHtml}`;
 }
 
-export type MarkerCallback = (lat: number, lng: number) => Promise<{ popupText: string; geojson: GeoJSON.FeatureCollection | null; airports: AirportItem[] }>;
+export type MarkerCallback = (lat: number, lng: number) => Promise<{ popupText: string; geojson: GeoJSON.FeatureCollection | null }>;
 
 interface AltitudeLimit {
     value: number;
@@ -293,23 +292,13 @@ function activeFlags(a: AirspaceItem): string[] {
 }
 
 export const markerCallback: MarkerCallback = async (lat, lng) => {
-    const airspaceUrl = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${DIST_METERS}&apiKey=${API_KEY}`;
-    const airportUrl = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=${AIRPORT_DIST_METERS}&apiKey=${API_KEY}`;
-
+    const url = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${DIST_METERS}&apiKey=${API_KEY}`;
     try {
-        const [airspaceRes, airportRes] = await Promise.all([
-            fetch(airspaceUrl),
-            fetch(airportUrl),
-        ]);
-        if (!airspaceRes.ok) throw new Error(`Airspace HTTP ${airspaceRes.status}`);
-        if (!airportRes.ok) throw new Error(`Airport HTTP ${airportRes.status}`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-        const [airspaceData, airportData] = await Promise.all([
-            airspaceRes.json(),
-            airportRes.json(),
-        ]);
-
-        const items: AirspaceItem[] = airspaceData.items ?? [];
+        const items: AirspaceItem[] = data.items ?? [];
         items.sort((a, b) => (a.lowerLimit ? toFeet(a.lowerLimit) : 0) - (b.lowerLimit ? toFeet(b.lowerLimit) : 0));
 
         const popupText = items.length
@@ -357,10 +346,22 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                 }),
         };
 
-        const airports: AirportItem[] = airportData.items ?? [];
-        return { popupText, geojson, airports };
+        return { popupText, geojson };
     } catch (err) {
         console.error('OpenAIP error:', err);
-        return { popupText: `Error: ${err}`, geojson: null, airports: [] };
+        return { popupText: `Error: ${err}`, geojson: null };
     }
 };
+
+export async function fetchAirports(lat: number, lng: number): Promise<AirportItem[]> {
+    const url = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=300000&apiKey=${API_KEY}`;
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return (data.items as AirportItem[]).filter(a => a.frequencies?.length);
+    } catch (err) {
+        console.error('Airport fetch error:', err);
+        return [];
+    }
+}
