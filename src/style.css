@@ -10,6 +10,23 @@ body {
   height: 100%;
 }
 
+/* ── Home / Locate button ── */
+.home-control a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  line-height: 1;
+  text-decoration: none;
+  color: #333;
+  cursor: pointer;
+}
+.home-control a:hover {
+  background: #f4f4f4;
+}
+
 /* ── Airspace Stack Card (right side) ── */
 
 .airspace-stack-control {

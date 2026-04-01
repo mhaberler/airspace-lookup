@@ -49,6 +49,30 @@ L.control.scale({
     maxWidth: 300
 }).addTo(map);
 
+// ── Home / Locate button ──
+const HomeControl = L.Control.extend({
+    options: { position: 'topleft' as L.ControlPosition },
+    onAdd(_map: L.Map) {
+        const btn = L.DomUtil.create('div', 'leaflet-bar home-control') as HTMLDivElement;
+        const a = L.DomUtil.create('a', '', btn) as HTMLAnchorElement;
+        a.href = '#';
+        a.title = 'Go to my location';
+        a.innerHTML = '&#x2302;'; // ⌂
+        a.role = 'button';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(a, 'click', (e) => {
+            L.DomEvent.preventDefault(e);
+            navigator.geolocation.getCurrentPosition(
+                (pos) => _map.setView([pos.coords.latitude, pos.coords.longitude], 12),
+                (err) => console.warn('Geolocation error:', err.message),
+                { enableHighAccuracy: true, timeout: 10_000 },
+            );
+        });
+        return btn;
+    },
+});
+new HomeControl().addTo(map);
+
 let currentMarker: L.Marker | null = null;
 let currentGeojsonLayer: L.GeoJSON | null = null;
 let highlightedLayer: L.Path | null = null;
