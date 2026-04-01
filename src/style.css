@@ -48,6 +48,25 @@ body {
   color: white;
 }
 
+/* ── Bottom-right corner: horizontal layout for slider + stack ── */
+.leaflet-bottom.leaflet-right {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.leaflet-bottom.leaflet-right .leaflet-control-attribution {
+  width: 100%;
+}
+.altitude-slider-control {
+  order: 1;
+}
+.airspace-stack-control {
+  order: 2;
+}
+
 /* ── Airspace Stack Card (right side) ── */
 
 .airspace-stack-control {

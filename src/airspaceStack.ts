@@ -388,7 +388,7 @@ export class AltitudeSliderControl extends L.Control {
     private dragging = false;
 
     constructor(onChange: (ft: number) => void) {
-        super({ position: 'bottomleft' });
+        super({ position: 'bottomright' });
         this.onChange = onChange;
     }
 
