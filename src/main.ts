@@ -67,6 +67,9 @@ const HomeControl = L.Control.extend({
                     const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
                     _map.setView(latlng, 12);
                     _map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
+                    if (pos.coords.altitude != null) {
+                        sliderControl.setValue(Math.round(pos.coords.altitude * 3.28084));
+                    }
                 },
                 (err) => console.warn('Geolocation error:', err.message),
                 { enableHighAccuracy: true, timeout: 10_000 },
@@ -92,7 +95,8 @@ const ShareControl = L.Control.extend({
             L.DomEvent.preventDefault(e);
             const pos = currentMarker ? currentMarker.getLatLng() : _map.getCenter();
             const z = _map.getZoom();
-            const url = `${location.origin}${location.pathname}?lat=${pos.lat.toFixed(6)}&lng=${pos.lng.toFixed(6)}&z=${z}`;
+            const alt = sliderControl.getValue();
+            const url = `${location.origin}${location.pathname}?lat=${pos.lat.toFixed(6)}&lng=${pos.lng.toFixed(6)}&z=${z}&alt=${alt}`;
             navigator.clipboard.writeText(url).then(() => {
                 btn.classList.add('copied');
                 a.innerHTML = '&#x2713;'; // ✓
@@ -157,8 +161,21 @@ function highlightAirspaceOnMap(entry: AirspaceEntry): void {
     });
 }
 
+function updateUrl(): void {
+    const pos = currentMarker ? currentMarker.getLatLng() : null;
+    if (!pos) return;
+    const params = new URLSearchParams();
+    params.set('lat', pos.lat.toFixed(6));
+    params.set('lng', pos.lng.toFixed(6));
+    params.set('z', String(map.getZoom()));
+    const alt = sliderControl.getValue();
+    if (alt > 0) params.set('alt', String(alt));
+    history.replaceState(null, '', `${location.pathname}?${params}`);
+}
+
 const sliderControl = new AltitudeSliderControl((ft) => {
     stackControl.setAltitude(ft);
+    updateUrl();
 });
 
 const stackControl = new AirspaceStackControl({
@@ -214,6 +231,7 @@ async function onMapClick(
     } else {
         stackControl.clear();
     }
+    updateUrl();
 }
 
 function clearAll(): void {
@@ -231,6 +249,7 @@ function clearAll(): void {
 
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
 map.on('contextmenu', () => clearAll());
+map.on('zoomend', () => updateUrl());
 
 // ── URL parameter deep-link ──
 {
@@ -238,9 +257,13 @@ map.on('contextmenu', () => clearAll());
     const lat = parseFloat(params.get('lat') ?? '');
     const lng = parseFloat(params.get('lng') ?? '');
     const z = parseInt(params.get('z') ?? '12', 10);
+    const alt = parseInt(params.get('alt') ?? '', 10);
     if (!isNaN(lat) && !isNaN(lng)) {
         const latlng = L.latLng(lat, lng);
         map.setView(latlng, z);
         map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
+    }
+    if (!isNaN(alt) && alt > 0) {
+        sliderControl.setValue(alt);
     }
 }

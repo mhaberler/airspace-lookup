@@ -72,6 +72,8 @@ body {
 .airspace-stack-control {
   min-width: 100px;
   height: 80vh;
+  box-sizing: border-box;
+  padding: 8px 4px;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -217,6 +219,7 @@ body {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   padding: 8px 6px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;

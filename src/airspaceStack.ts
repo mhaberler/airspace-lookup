@@ -476,6 +476,15 @@ export class AltitudeSliderControl extends L.Control {
         this.onChange(this.value);
     }
 
+    getValue(): number { return this.value; }
+
+    setValue(ft: number): void {
+        this.value = Math.max(0, Math.min(this.max, Math.round(ft / 100) * 100));
+        this.label.textContent = `${this.value.toLocaleString()} ft`;
+        this.updateVisuals();
+        this.onChange(this.value);
+    }
+
     private updateVisuals(): void {
         const pct = this.max > 0 ? (this.value / this.max) * 100 : 0;
         this.fill.style.height = `${pct}%`;
