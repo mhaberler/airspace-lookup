@@ -139,9 +139,10 @@ async function onMapClick(
                 const lower = feature.properties?.lowerLabel ?? '?';
                 const upper = feature.properties?.upperLabel ?? '?';
                 const active = feature.properties?.active ?? true;
+                const reason = feature.properties?.activeReason ?? '24h';
                 const status = active
-                    ? '<span style="color:green">ACTIVE</span>'
-                    : '<span style="color:grey">INACTIVE</span>';
+                    ? `<span style="color:green">ACTIVE</span> (${reason})`
+                    : `<span style="color:grey">INACTIVE</span> (${reason})`;
                 const cls = icaoClassName(feature.properties?.icaoClass ?? 7);
                 const typ = airspaceTypeName(feature.properties?.type ?? 0);
                 const act = feature.properties?.activity ? ` – ${activityName(feature.properties.activity)}` : '';

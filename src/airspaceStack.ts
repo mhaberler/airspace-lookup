@@ -128,6 +128,7 @@ export interface AirspaceEntry {
     upperLabel: string;
     activity: number;
     flags: string[];
+    activeReason: string;
     active: boolean;
 }
 
@@ -185,6 +186,7 @@ export class AirspaceStackControl extends L.Control {
             upperLabel: f.properties?.upperLabel ?? '?',
             activity: f.properties?.activity ?? 0,
             flags: f.properties?.flags ?? [],
+            activeReason: f.properties?.activeReason ?? '24h',
             active: f.properties?.active ?? true,
         }));
 
@@ -368,7 +370,7 @@ export class AirspaceStackControl extends L.Control {
             ${airspaceTypeName(entry.type)}, ${icaoClassName(entry.icaoClass)}<br>${entry.activity ? `            ${activityName(entry.activity)}<br>` : ''}
             Lower: ${entry.lowerLabel} (${entry.lowerFt.toLocaleString()} ft)<br>
             Upper: ${entry.upperLabel} (${entry.upperFt.toLocaleString()} ft)<br>
-            Status: ${activeHtml}${entry.flags.length ? `<br>${entry.flags.join(', ')}` : ''}
+            Status: ${activeHtml} (${entry.activeReason})${entry.flags.length ? `<br>${entry.flags.join(', ')}` : ''}
         `;
         popup.querySelector('.airspace-detail-close')!.addEventListener('click', () => popup.remove());
     }
