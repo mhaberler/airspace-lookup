@@ -77,6 +77,36 @@ const HomeControl = L.Control.extend({
 });
 new HomeControl().addTo(map);
 
+// ── Share button ──
+const ShareControl = L.Control.extend({
+    options: { position: 'topleft' as L.ControlPosition },
+    onAdd(_map: L.Map) {
+        const btn = L.DomUtil.create('div', 'leaflet-bar share-control') as HTMLDivElement;
+        const a = L.DomUtil.create('a', '', btn) as HTMLAnchorElement;
+        a.href = '#';
+        a.title = 'Copy link to this location';
+        a.innerHTML = '&#x1F517;'; // 🔗
+        a.role = 'button';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(a, 'click', (e) => {
+            L.DomEvent.preventDefault(e);
+            const pos = currentMarker ? currentMarker.getLatLng() : _map.getCenter();
+            const z = _map.getZoom();
+            const url = `${location.origin}${location.pathname}?lat=${pos.lat.toFixed(6)}&lng=${pos.lng.toFixed(6)}&z=${z}`;
+            navigator.clipboard.writeText(url).then(() => {
+                btn.classList.add('copied');
+                a.innerHTML = '&#x2713;'; // ✓
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    a.innerHTML = '&#x1F517;';
+                }, 2000);
+            });
+        });
+        return btn;
+    },
+});
+new ShareControl().addTo(map);
+
 let currentMarker: L.Marker | null = null;
 let currentGeojsonLayer: L.GeoJSON | null = null;
 let highlightedLayer: L.Path | null = null;
@@ -201,3 +231,16 @@ function clearAll(): void {
 
 map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback));
 map.on('contextmenu', () => clearAll());
+
+// ── URL parameter deep-link ──
+{
+    const params = new URLSearchParams(location.search);
+    const lat = parseFloat(params.get('lat') ?? '');
+    const lng = parseFloat(params.get('lng') ?? '');
+    const z = parseInt(params.get('z') ?? '12', 10);
+    if (!isNaN(lat) && !isNaN(lng)) {
+        const latlng = L.latLng(lat, lng);
+        map.setView(latlng, z);
+        map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
+    }
+}
