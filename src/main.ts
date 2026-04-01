@@ -69,7 +69,7 @@ const overlayLayers: Record<string, L.TileLayer> = {
 };
 
 const map = L.map('map', {
-    center: [47,15],
+    center: [47, 15],
     zoom: 12,
     zoomControl: true,
     layers: [m_mono]
@@ -112,11 +112,11 @@ const HomeControl = L.Control.extend({
                     _map.setView(latlng, 12);
                     _map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
                     if (pos.coords.altitude != null) {
-                        sliderControl.setValue(Math.round(pos.coords.altitude * 3.28084));
-                    }
+                        const GitHubControl = L.Control.extend({
+                        }
                 },
-                (err) => console.warn('Geolocation error:', err.message),
-                { enableHighAccuracy: true, timeout: 10_000 },
+                    (err) => console.warn('Geolocation error:', err.message),
+                        { enableHighAccuracy: true, timeout: 10_000 },
             );
         });
         return btn;
