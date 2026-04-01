@@ -2,8 +2,152 @@ import { icaoClassName, airspaceTypeName, activityName } from './airspaceStack';
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string;
 const DIST_METERS = 10;
+const AIRPORT_DIST_METERS = 100_000;
 
-export type MarkerCallback = (lat: number, lng: number) => Promise<{ popupText: string; geojson: GeoJSON.FeatureCollection | null }>;
+// ── Airport type names ──────────────────────────────────────────────────────
+const AIRPORT_TYPE_NAMES: Record<number, string> = {
+    0: 'Other',
+    1: 'Glider Site',
+    2: 'Airfield',
+    3: 'Int\'l Airport',
+    4: 'Heliport',
+    5: 'Military',
+    6: 'Ultralight',
+    7: 'Helipad',
+    8: 'Seaplane Base',
+    9: 'Hang Gliding',
+};
+
+export function airportTypeName(type: number): string {
+    return AIRPORT_TYPE_NAMES[type] ?? `Type ${type}`;
+}
+
+// ── Frequency type names ────────────────────────────────────────────────────
+const FREQ_TYPE_NAMES: Record<number, string> = {
+    0: 'Other',
+    1: 'Approach',
+    2: 'Apron',
+    3: 'Arrival',
+    4: 'Center',
+    5: 'Clearance',
+    6: 'CTAF',
+    7: 'Departure',
+    8: 'FIS',
+    9: 'Gliding',
+    10: 'Ground',
+    11: 'Info',
+    12: 'Multicom',
+    13: 'Radar',
+    14: 'Tower',
+    15: 'ATIS',
+    16: 'Radio',
+    17: 'UNICOM',
+    18: 'VOLMET',
+    19: 'AFIS',
+};
+
+function freqTypeName(type: number): string {
+    return FREQ_TYPE_NAMES[type] ?? `Type ${type}`;
+}
+
+// ── Runway surface composition names ───────────────────────────────────────
+const SURFACE_NAMES: Record<number, string> = {
+    0: 'Unknown',
+    1: 'Asphalt',
+    2: 'Grass',
+    3: 'Concrete',
+    4: 'Sand',
+    5: 'Gravel',
+    6: 'Water',
+    7: 'Ice',
+    8: 'Snow',
+    9: 'Dirt',
+};
+
+function surfaceName(code: number): string {
+    return SURFACE_NAMES[code] ?? `Surface ${code}`;
+}
+
+// ── Airport interfaces ──────────────────────────────────────────────────────
+interface AirportFrequency {
+    value: string;
+    unit: number;
+    type: number;
+    name: string;
+    primary: boolean;
+    publicUse: boolean;
+}
+
+interface AirportRunway {
+    designator: string;
+    trueHeading: number;
+    mainRunway: boolean;
+    takeOffOnly: boolean;
+    landingOnly: boolean;
+    surface?: { mainComposite?: number };
+    dimension?: { length?: { value: number; unit: number }; width?: { value: number; unit: number } };
+}
+
+export interface AirportItem {
+    _id: string;
+    name: string;
+    icaoCode?: string;
+    iataCode?: string;
+    type: number;
+    geometry: GeoJSON.Point;
+    elevation?: { value: number; unit: number };
+    ppr: boolean;
+    private: boolean;
+    skydiveActivity: boolean;
+    winchOnly: boolean;
+    frequencies?: AirportFrequency[];
+    runways?: AirportRunway[];
+}
+
+export function airportPopupHtml(a: AirportItem): string {
+    const icao = a.icaoCode ? ` <b>${a.icaoCode}</b>` : '';
+    const iata = a.iataCode ? ` / ${a.iataCode}` : '';
+    const elev = a.elevation ? ` · ${a.elevation.value} ft MSL` : '';
+    const flags = [
+        a.ppr ? 'PPR' : '',
+        a.private ? 'Private' : '',
+        a.skydiveActivity ? 'Skydive' : '',
+        a.winchOnly ? 'Winch only' : '',
+    ].filter(Boolean);
+    const flagsHtml = flags.length ? `<br><span style="color:#888">${flags.join(' · ')}</span>` : '';
+
+    // Runways
+    let runwaysHtml = '';
+    if (a.runways?.length) {
+        const rwyLines = a.runways
+            .filter(r => r.mainRunway !== false)
+            .map(r => {
+                const surf = r.surface?.mainComposite != null ? surfaceName(r.surface.mainComposite) : '';
+                const len = r.dimension?.length ? `${r.dimension.length.value} m` : '';
+                const width = r.dimension?.width ? `×${r.dimension.width.value} m` : '';
+                const ops = r.takeOffOnly ? ' (T/O only)' : r.landingOnly ? ' (Ldg only)' : '';
+                return `RWY ${r.designator} ${len}${width} ${surf}${ops}`.trim();
+            });
+        if (rwyLines.length) runwaysHtml = `<br><b>Runways:</b> ${rwyLines.join(', ')}`;
+    }
+
+    // ATS Communications
+    let freqHtml = '';
+    if (a.frequencies?.length) {
+        const lines = a.frequencies
+            .sort((x, y) => (y.primary ? 1 : 0) - (x.primary ? 1 : 0))
+            .map(f => {
+                const primary = f.primary ? '<b>' : '';
+                const primaryEnd = f.primary ? '</b>' : '';
+                return `${primary}${freqTypeName(f.type)} ${f.value} MHz${primaryEnd}${f.name && f.name !== f.value ? ` <i>${f.name}</i>` : ''}`;
+            });
+        freqHtml = `<br><b>ATS Comm:</b><br>${lines.join('<br>')}`;
+    }
+
+    return `<b>${a.name}</b>${icao}${iata}<br>${airportTypeName(a.type)}${elev}${flagsHtml}${runwaysHtml}${freqHtml}`;
+}
+
+export type MarkerCallback = (lat: number, lng: number) => Promise<{ popupText: string; geojson: GeoJSON.FeatureCollection | null; airports: AirportItem[] }>;
 
 interface AltitudeLimit {
     value: number;
@@ -149,15 +293,23 @@ function activeFlags(a: AirspaceItem): string[] {
 }
 
 export const markerCallback: MarkerCallback = async (lat, lng) => {
-    const url = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${DIST_METERS}&apiKey=${API_KEY}`;
-    console.log('OpenAIP request:', url);
+    const airspaceUrl = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${DIST_METERS}&apiKey=${API_KEY}`;
+    const airportUrl = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=${AIRPORT_DIST_METERS}&apiKey=${API_KEY}`;
 
     try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const [airspaceRes, airportRes] = await Promise.all([
+            fetch(airspaceUrl),
+            fetch(airportUrl),
+        ]);
+        if (!airspaceRes.ok) throw new Error(`Airspace HTTP ${airspaceRes.status}`);
+        if (!airportRes.ok) throw new Error(`Airport HTTP ${airportRes.status}`);
 
-        const items: AirspaceItem[] = data.items ?? [];
+        const [airspaceData, airportData] = await Promise.all([
+            airspaceRes.json(),
+            airportRes.json(),
+        ]);
+
+        const items: AirspaceItem[] = airspaceData.items ?? [];
         items.sort((a, b) => (a.lowerLimit ? toFeet(a.lowerLimit) : 0) - (b.lowerLimit ? toFeet(b.lowerLimit) : 0));
 
         const popupText = items.length
@@ -175,7 +327,7 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                 const flagsHtml = flags.length ? ` [${flags.join(', ')}]` : '';
                 return `<b>${a.name}</b> (${airspaceTypeName(a.type)}, ${icaoClassName(a.icaoClass)}${act}) — ${lower} / ${upper} — ${status}${flagsHtml}`;
             }).join('<br>')
-            : `No airspaces within ${DIST_METERS} nm`;
+            : `No airspaces within ${DIST_METERS} m`;
 
         const geojson: GeoJSON.FeatureCollection = {
             type: 'FeatureCollection',
@@ -205,9 +357,10 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
                 }),
         };
 
-        return { popupText, geojson };
+        const airports: AirportItem[] = airportData.items ?? [];
+        return { popupText, geojson, airports };
     } catch (err) {
         console.error('OpenAIP error:', err);
-        return { popupText: `Error: ${err}`, geojson: null };
+        return { popupText: `Error: ${err}`, geojson: null, airports: [] };
     }
 };

@@ -1,7 +1,7 @@
 import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MarkerCallback, markerCallback } from './markerCallback';
+import { MarkerCallback, markerCallback, airportPopupHtml, airportTypeName } from './markerCallback';
 import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
@@ -112,8 +112,8 @@ const HomeControl = L.Control.extend({
                     _map.setView(latlng, 12);
                     _map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
                     if (pos.coords.altitude != null) {
-                        const GitHubControl = L.Control.extend({
-                        }
+                        sliderControl.setValue(Math.round(pos.coords.altitude * 3.28084));
+                    }
                 },
                     (err) => console.warn('Geolocation error:', err.message),
                         { enableHighAccuracy: true, timeout: 10_000 },
@@ -175,6 +175,18 @@ new GithubControl().addTo(map);
 let currentMarker: L.Marker | null = null;
 let currentGeojsonLayer: L.GeoJSON | null = null;
 let highlightedLayer: L.Path | null = null;
+let airportMarkers: L.CircleMarker[] = [];
+
+// Airport icon colours by type
+const AIRPORT_ICON_COLOR: Record<number, string> = {
+    3: '#1565C0', // Int'l airport — blue
+    5: '#6A1B9A', // Military — purple
+    4: '#00838F', // Heliport — teal
+    7: '#00838F', // Helipad — teal
+};
+function airportColor(type: number): string {
+    return AIRPORT_ICON_COLOR[type] ?? '#2E7D32';
+}
 
 function featureStyle(props: any): L.PathOptions {
     const active = props?.active ?? true;
@@ -266,7 +278,7 @@ async function onMapClick(
         currentMarker = L.marker(e.latlng).addTo(map);
     }
 
-    const { popupText, geojson } = await callback(lat, lng);
+    const { popupText, geojson, airports } = await callback(lat, lng);
     currentMarker.bindPopup(popupText).openPopup();
 
     resetHighlight();
@@ -300,6 +312,27 @@ async function onMapClick(
         stackControl.clear();
     }
 
+    // ── Airport markers ──────────────────────────────────────────────────
+    for (const m of airportMarkers) m.remove();
+    airportMarkers = [];
+    for (const airport of airports) {
+        const [lngA, latA] = airport.geometry.coordinates;
+        const color = airportColor(airport.type);
+        const marker = L.circleMarker([latA, lngA], {
+            radius: 7,
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.55,
+        });
+        marker.bindPopup(airportPopupHtml(airport), { maxWidth: 320 });
+        marker.bindTooltip(
+            `${airport.icaoCode ? airport.icaoCode + ' · ' : ''}${airport.name} (${airportTypeName(airport.type)})`,
+            { sticky: true }
+        );
+        marker.addTo(map);
+        airportMarkers.push(marker);
+    }
 }
 
 function clearAll(): void {
@@ -312,6 +345,8 @@ function clearAll(): void {
         currentGeojsonLayer.remove();
         currentGeojsonLayer = null;
     }
+    for (const m of airportMarkers) m.remove();
+    airportMarkers = [];
     stackControl.clear();
 }
 
