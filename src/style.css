@@ -48,6 +48,21 @@ body {
   color: white;
 }
 
+/* ── GitHub link ── */
+.github-control a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  text-decoration: none;
+  color: #333;
+  cursor: pointer;
+}
+.github-control a:hover {
+  background: #f4f4f4;
+}
+
 /* ── Bottom-right corner: horizontal layout for slider + stack ── */
 .leaflet-bottom.leaflet-right {
   display: flex;
