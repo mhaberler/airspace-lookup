@@ -10,9 +10,10 @@ Interactive map tool for querying airspace data at any location using the [OpenA
 - **Polygon overlay**: airspace boundaries rendered on the map with aviation-standard coloring (blue for controlled B/C/D, magenta for E/F, red for restricted/prohibited, amber for danger/warning, green for gliding/parachuting); inactive airspaces shown in grey/dashed
 - **Airspace stack**: vertical card showing all airspaces at true altitude proportions with dynamic ceiling (rounded to next 5,000 ft, minimum 10,000 ft); responsive width adapts to the number of airspace columns
 - **ICAO class sorting**: stack columns are sorted horizontally by ICAO class at the current altitude (most restrictive leftmost), re-sorting as altitude changes
-- **Altitude slider**: touch-friendly custom vertical slider (right of the stack) with pointer-event based dragging for reliable mobile use
+- **Altitude line**: drag the red horizontal line in the airspace stack up or down to set the simulated aircraft altitude; current altitude shown in the stack header
 - **Detail popups**: click any block in the stack for full details including airspace type name (CTR, TMA, CTA, etc.), ICAO class (A–G), activity (parachuting, gliding, etc.), altitude limits, operating status with reason (24h, By NOTAM, sunrise–sunset with computed times), and operational flags (On Demand, On Request, etc.)
 - **Map highlight**: clicking a stack block highlights the corresponding polygon on the map
+- **Airports**: airports and airfields with radio frequencies are displayed as colour-coded circle markers (blue = international, teal = heliport, green = other); markers refresh automatically as you pan or zoom; click a marker for name, ICAO/IATA code, type, elevation, runway dimensions and surface type, and ATS communication frequencies
 - **Sunrise/sunset awareness**: operating hours that reference sunrise/sunset are resolved to actual UTC times based on the queried location
 - **Home button**: geolocates your position, centers the map, places a marker, loads airspaces, and sets the altitude slider if GPS altitude is available
 - **Share button**: copies a deep-link URL with current location, zoom, and altitude to the clipboard
@@ -59,8 +60,8 @@ Add `VITE_OPENAIP_KEY` as a **repository secret** under Settings > Secrets and v
 - **Right click**: clear markers and polygons
 - **Home button** (top-left): geolocate and center map at your position
 - **Share button** (top-left): copy a shareable URL to the clipboard
-- **Altitude slider** (right, next to stack): drag to set simulated aircraft altitude
-- **Airspace stack** (right): shows vertical profile; click blocks for details and to highlight the polygon on the map
+- **Airspace stack** (bottom-right): shows vertical profile; drag the red altitude line to set simulated aircraft altitude; click blocks for details and to highlight the polygon on the map
+- **Airport markers**: automatically shown within 100 km of the map centre; click for ICAO code, frequencies, and runway info
 
 ## Built with
 

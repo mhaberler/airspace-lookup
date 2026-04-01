@@ -137,22 +137,25 @@ export class AirspaceStackControl extends L.Control {
     private stackArea!: HTMLDivElement;
     private aircraftLine!: HTMLDivElement;
     private aircraftLabel!: HTMLDivElement;
+    private altLabel!: HTMLSpanElement;
     private entries: AirspaceEntry[] = [];
-    private columnOf: number[] = [];   // column index per entry
+    private columnOf: number[] = [];
     private blocks: HTMLDivElement[] = [];
     private ticks: HTMLDivElement[] = [];
     private aircraftAlt = 0;
     private maxAlt = MIN_CEILING;
-    private onMaxAltChanged?: (ft: number) => void;
+    private dragging = false;
+    private manualWidth = false;
     private onBlockClicked?: (entry: AirspaceEntry, index: number) => void;
+    private onAltChanged?: (ft: number) => void;
 
     constructor(opts?: {
-        onMaxAltChanged?: (ft: number) => void;
         onBlockClicked?: (entry: AirspaceEntry, index: number) => void;
+        onAltChanged?: (ft: number) => void;
     }) {
         super({ position: 'bottomright' });
-        this.onMaxAltChanged = opts?.onMaxAltChanged;
         this.onBlockClicked = opts?.onBlockClicked;
+        this.onAltChanged = opts?.onAltChanged;
     }
 
     onAdd(_map: L.Map): HTMLElement {
@@ -160,19 +163,91 @@ export class AirspaceStackControl extends L.Control {
         L.DomEvent.disableClickPropagation(this.container);
         L.DomEvent.disableScrollPropagation(this.container);
 
-        const title = L.DomUtil.create('div', 'airspace-stack-title', this.container) as HTMLDivElement;
-        title.textContent = 'Airspace';
+        // Header: title + current altitude value
+        const header = L.DomUtil.create('div', 'airspace-stack-header', this.container) as HTMLDivElement;
+        const titleEl = L.DomUtil.create('span', '', header) as HTMLSpanElement;
+        titleEl.textContent = 'Airspace';
+        this.altLabel = L.DomUtil.create('span', 'airspace-stack-alt-label', header) as HTMLSpanElement;
+        this.altLabel.textContent = '0 ft';
 
         this.stackArea = L.DomUtil.create('div', 'airspace-stack-area', this.container) as HTMLDivElement;
-
-        // aircraft altitude marker
         this.aircraftLine = L.DomUtil.create('div', 'airspace-stack-aircraft', this.stackArea) as HTMLDivElement;
         this.aircraftLabel = L.DomUtil.create('div', 'airspace-stack-aircraft-label', this.aircraftLine) as HTMLDivElement;
-        this.setAltitude(0);
 
+        // Resize handle on left edge
+        const resizeHandle = L.DomUtil.create('div', 'airspace-stack-resize-handle', this.container) as HTMLDivElement;
+        let resizeDragging = false;
+        resizeHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resizeDragging = true;
+            resizeHandle.setPointerCapture(e.pointerId);
+            this.container.classList.add('resizing');
+        });
+        resizeHandle.addEventListener('pointermove', (e: PointerEvent) => {
+            if (!resizeDragging) return;
+            e.preventDefault();
+            const rect = this.container.getBoundingClientRect();
+            const newWidth = Math.max(80, Math.min(window.innerWidth * 0.7, rect.right - e.clientX));
+            this.container.style.width = `${newWidth}px`;
+            this.manualWidth = true;
+        });
+        resizeHandle.addEventListener('pointerup', () => {
+            resizeDragging = false;
+            this.container.classList.remove('resizing');
+        });
+
+        this.setupLineEvents();
+        this.setAltitudeVisuals(0);
         this.renderTicks();
 
         return this.container;
+    }
+
+    private setupLineEvents(): void {
+        const updateFromPointer = (e: PointerEvent) => {
+            const rect = this.stackArea.getBoundingClientRect();
+            const ratio = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            const value = Math.max(0, Math.min(this.maxAlt, Math.round(ratio * this.maxAlt / 100) * 100));
+            this.setAltitudeVisuals(value);
+            this.onAltChanged?.(value);
+        };
+        this.aircraftLine.addEventListener('pointerdown', (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.dragging = true;
+            this.aircraftLine.setPointerCapture(e.pointerId);
+            this.aircraftLine.classList.add('dragging');
+        });
+        this.aircraftLine.addEventListener('pointermove', (e: PointerEvent) => {
+            if (!this.dragging) return;
+            e.preventDefault();
+            updateFromPointer(e);
+        });
+        this.aircraftLine.addEventListener('pointerup', (e: PointerEvent) => {
+            if (!this.dragging) return;
+            this.dragging = false;
+            this.aircraftLine.releasePointerCapture(e.pointerId);
+            this.aircraftLine.classList.remove('dragging');
+        });
+        this.container.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    }
+
+    private setAltitudeVisuals(ft: number): void {
+        this.aircraftAlt = ft;
+        const pct = this.maxAlt > 0 ? (ft / this.maxAlt) * 100 : 0;
+        this.altLabel.textContent = `${ft.toLocaleString()} ft`;
+        this.aircraftLine.style.bottom = `${pct}%`;
+        this.aircraftLabel.textContent = `${ft.toLocaleString()} ft`;
+        this.reorderAndHighlight();
+    }
+
+    getValue(): number { return this.aircraftAlt; }
+
+    setValue(ft: number): void {
+        const clamped = Math.max(0, Math.min(this.maxAlt, Math.round(ft / 100) * 100));
+        this.setAltitudeVisuals(clamped);
+        this.onAltChanged?.(clamped);
     }
 
     update(features: GeoJSON.Feature[]): void {
@@ -199,18 +274,14 @@ export class AirspaceStackControl extends L.Control {
         if (newMax !== this.maxAlt) {
             this.maxAlt = newMax;
             this.renderTicks();
-            this.onMaxAltChanged?.(this.maxAlt);
+            this.setAltitudeVisuals(Math.min(this.aircraftAlt, this.maxAlt));
         }
 
         this.renderBlocks();
     }
 
     setAltitude(ft: number): void {
-        this.aircraftAlt = ft;
-        const pct = (ft / this.maxAlt) * 100;
-        this.aircraftLine.style.bottom = `${pct}%`;
-        this.aircraftLabel.textContent = `${ft.toLocaleString()} ft`;
-        this.reorderAndHighlight();
+        this.setAltitudeVisuals(ft);
     }
 
     clear(): void {
@@ -259,9 +330,11 @@ export class AirspaceStackControl extends L.Control {
 
         const numCols = columnTops.length;
 
-        // responsive width: 5vw per column, min 5vw
-        const vw = Math.max(numCols * 3, 3);
-        this.container.style.width = `${vw}vw`;
+        // 7vw per column, minimum 8vw, cap at 40vw — skip if user manually resized
+        if (!this.manualWidth) {
+            const vw = Math.min(Math.max(numCols * 7, 8), 40);
+            this.container.style.width = `${vw}vw`;
+        }
 
         // sort columns by ICAO class at current altitude, then render
         const colOrder = this.computeColumnOrder(numCols);
@@ -373,121 +446,5 @@ export class AirspaceStackControl extends L.Control {
             Status: ${activeHtml} (${entry.activeReason})${entry.flags.length ? `<br>${entry.flags.join(', ')}` : ''}
         `;
         popup.querySelector('.airspace-detail-close')!.addEventListener('click', () => popup.remove());
-    }
-}
-
-export class AltitudeSliderControl extends L.Control {
-    private container!: HTMLDivElement;
-    private track!: HTMLDivElement;
-    private thumb!: HTMLDivElement;
-    private fill!: HTMLDivElement;
-    private label!: HTMLDivElement;
-    private onChange: (ft: number) => void;
-    private max = MIN_CEILING;
-    private value = 0;
-    private dragging = false;
-
-    constructor(onChange: (ft: number) => void) {
-        super({ position: 'bottomright' });
-        this.onChange = onChange;
-    }
-
-    onAdd(_map: L.Map): HTMLElement {
-        this.container = L.DomUtil.create('div', 'altitude-slider-control') as HTMLDivElement;
-        L.DomEvent.disableClickPropagation(this.container);
-        L.DomEvent.disableScrollPropagation(this.container);
-
-        const title = L.DomUtil.create('div', 'altitude-slider-title', this.container) as HTMLDivElement;
-        title.textContent = 'ALT';
-
-        this.track = L.DomUtil.create('div', 'altitude-slider-track', this.container) as HTMLDivElement;
-        this.fill = L.DomUtil.create('div', 'altitude-slider-fill', this.track) as HTMLDivElement;
-        this.thumb = L.DomUtil.create('div', 'altitude-slider-thumb', this.track) as HTMLDivElement;
-
-        this.label = L.DomUtil.create('div', 'altitude-slider-label', this.container) as HTMLDivElement;
-        this.label.textContent = '0 ft';
-
-        // pointer events for both mouse and touch
-        const onPointerDown = (e: PointerEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.dragging = true;
-            this.thumb.setPointerCapture(e.pointerId);
-            this.updateFromPointer(e);
-        };
-        const onPointerMove = (e: PointerEvent) => {
-            if (!this.dragging) return;
-            e.preventDefault();
-            e.stopPropagation();
-            this.updateFromPointer(e);
-        };
-        const onPointerUp = (e: PointerEvent) => {
-            if (!this.dragging) return;
-            this.dragging = false;
-            this.thumb.releasePointerCapture(e.pointerId);
-        };
-
-        // allow tapping anywhere on track
-        this.track.addEventListener('pointerdown', (e: PointerEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.dragging = true;
-            this.track.setPointerCapture(e.pointerId);
-            this.updateFromPointer(e);
-        });
-        this.track.addEventListener('pointermove', onPointerMove);
-        this.track.addEventListener('pointerup', (e: PointerEvent) => {
-            if (!this.dragging) return;
-            this.dragging = false;
-            this.track.releasePointerCapture(e.pointerId);
-        });
-
-        this.thumb.addEventListener('pointerdown', onPointerDown);
-        this.thumb.addEventListener('pointermove', onPointerMove);
-        this.thumb.addEventListener('pointerup', onPointerUp);
-
-        // prevent touch scrolling on the control
-        this.container.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-
-        this.updateVisuals();
-        return this.container;
-    }
-
-    setMax(ft: number): void {
-        this.max = ft;
-        // clamp current value
-        if (this.value > this.max) {
-            this.value = this.max;
-            this.onChange(this.value);
-        }
-        this.updateVisuals();
-    }
-
-    private updateFromPointer(e: PointerEvent): void {
-        const rect = this.track.getBoundingClientRect();
-        // bottom = 0, top = max; invert Y
-        const ratio = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-        const raw = ratio * this.max;
-        // snap to nearest 100
-        this.value = Math.round(raw / 100) * 100;
-        this.value = Math.max(0, Math.min(this.max, this.value));
-        this.label.textContent = `${this.value.toLocaleString()} ft`;
-        this.updateVisuals();
-        this.onChange(this.value);
-    }
-
-    getValue(): number { return this.value; }
-
-    setValue(ft: number): void {
-        this.value = Math.max(0, Math.min(this.max, Math.round(ft / 100) * 100));
-        this.label.textContent = `${this.value.toLocaleString()} ft`;
-        this.updateVisuals();
-        this.onChange(this.value);
-    }
-
-    private updateVisuals(): void {
-        const pct = this.max > 0 ? (this.value / this.max) * 100 : 0;
-        this.fill.style.height = `${pct}%`;
-        this.thumb.style.bottom = `${pct}%`;
     }
 }

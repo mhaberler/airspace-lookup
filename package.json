@@ -3,10 +3,10 @@
   "version": "1.9.4",
   "description": "",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc && vite build",
     "build:ghpages": "VITE_BASE=/airspace-lookup/ VITE_OUTDIR=docs npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview --host"
   },
   "keywords": [],
   "author": "Yasunori Kirimoto",

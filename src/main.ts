@@ -2,7 +2,7 @@ import './style.css'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MarkerCallback, markerCallback, fetchAirports, airportPopupHtml, airportTypeName } from './markerCallback';
-import { AirspaceStackControl, AltitudeSliderControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack';
+import { AirspaceStackControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack';
 
 L.Icon.Default.imagePath = 'img/icon/';
 
@@ -112,7 +112,7 @@ const HomeControl = L.Control.extend({
                     _map.setView(latlng, 12);
                     _map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
                     if (pos.coords.altitude != null) {
-                        sliderControl.setValue(Math.round(pos.coords.altitude * 3.28084));
+                        stackControl.setValue(Math.round(pos.coords.altitude * 3.28084));
                     }
                 },
                     (err) => console.warn('Geolocation error:', err.message),
@@ -139,7 +139,7 @@ const ShareControl = L.Control.extend({
             L.DomEvent.preventDefault(e);
             const pos = currentMarker ? currentMarker.getLatLng() : _map.getCenter();
             const z = _map.getZoom();
-            const alt = sliderControl.getValue();
+            const alt = stackControl.getValue();
             const url = `${location.origin}${location.pathname}?lat=${pos.lat.toFixed(6)}&lng=${pos.lng.toFixed(6)}&z=${z}&alt=${alt}`;
             navigator.clipboard.writeText(url).then(() => {
                 btn.classList.add('copied');
@@ -240,7 +240,7 @@ function updateUrl(): void {
     params.set('lat', pos.lat.toFixed(6));
     params.set('lng', pos.lng.toFixed(6));
     params.set('z', String(map.getZoom()));
-    const alt = sliderControl.getValue();
+    const alt = stackControl.getValue();
     if (alt > 0) params.set('alt', String(alt));
     // base layer
     const baseKey = Object.entries(baseLayers).find(([, layer]) => map.hasLayer(layer))?.[0];
@@ -253,17 +253,11 @@ function updateUrl(): void {
     history.replaceState(null, '', `${location.pathname}?${params}`);
 }
 
-const sliderControl = new AltitudeSliderControl((ft) => {
-    stackControl.setAltitude(ft);
-    updateUrl();
-});
-
 const stackControl = new AirspaceStackControl({
-    onMaxAltChanged: (ft) => sliderControl.setMax(ft),
     onBlockClicked: (entry) => highlightAirspaceOnMap(entry),
+    onAltChanged: () => updateUrl(),
 });
 stackControl.addTo(map);
-sliderControl.addTo(map);
 
 async function onMapClick(
     e: L.LeafletMouseEvent,
@@ -382,7 +376,7 @@ map.on('overlayremove', () => updateUrl());
         map.fireEvent('click', { latlng } as L.LeafletMouseEvent);
     }
     if (!isNaN(alt) && alt > 0) {
-        sliderControl.setValue(alt);
+        stackControl.setValue(alt);
     }
     // restore base layer
     const base = params.get('base');
