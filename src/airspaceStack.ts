@@ -378,9 +378,14 @@ export class AirspaceStackControl extends L.Control {
 
 export class AltitudeSliderControl extends L.Control {
     private container!: HTMLDivElement;
-    private slider!: HTMLInputElement;
+    private track!: HTMLDivElement;
+    private thumb!: HTMLDivElement;
+    private fill!: HTMLDivElement;
     private label!: HTMLDivElement;
     private onChange: (ft: number) => void;
+    private max = MIN_CEILING;
+    private value = 0;
+    private dragging = false;
 
     constructor(onChange: (ft: number) => void) {
         super({ position: 'bottomleft' });
@@ -395,26 +400,85 @@ export class AltitudeSliderControl extends L.Control {
         const title = L.DomUtil.create('div', 'altitude-slider-title', this.container) as HTMLDivElement;
         title.textContent = 'ALT';
 
-        this.slider = L.DomUtil.create('input', 'altitude-slider', this.container) as HTMLInputElement;
-        this.slider.type = 'range';
-        this.slider.min = '0';
-        this.slider.max = String(MIN_CEILING);
-        this.slider.step = '100';
-        this.slider.value = '0';
+        this.track = L.DomUtil.create('div', 'altitude-slider-track', this.container) as HTMLDivElement;
+        this.fill = L.DomUtil.create('div', 'altitude-slider-fill', this.track) as HTMLDivElement;
+        this.thumb = L.DomUtil.create('div', 'altitude-slider-thumb', this.track) as HTMLDivElement;
 
         this.label = L.DomUtil.create('div', 'altitude-slider-label', this.container) as HTMLDivElement;
         this.label.textContent = '0 ft';
 
-        this.slider.addEventListener('input', () => {
-            const ft = parseInt(this.slider.value, 10);
-            this.label.textContent = `${ft.toLocaleString()} ft`;
-            this.onChange(ft);
+        // pointer events for both mouse and touch
+        const onPointerDown = (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.dragging = true;
+            this.thumb.setPointerCapture(e.pointerId);
+            this.updateFromPointer(e);
+        };
+        const onPointerMove = (e: PointerEvent) => {
+            if (!this.dragging) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.updateFromPointer(e);
+        };
+        const onPointerUp = (e: PointerEvent) => {
+            if (!this.dragging) return;
+            this.dragging = false;
+            this.thumb.releasePointerCapture(e.pointerId);
+        };
+
+        // allow tapping anywhere on track
+        this.track.addEventListener('pointerdown', (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.dragging = true;
+            this.track.setPointerCapture(e.pointerId);
+            this.updateFromPointer(e);
+        });
+        this.track.addEventListener('pointermove', onPointerMove);
+        this.track.addEventListener('pointerup', (e: PointerEvent) => {
+            if (!this.dragging) return;
+            this.dragging = false;
+            this.track.releasePointerCapture(e.pointerId);
         });
 
+        this.thumb.addEventListener('pointerdown', onPointerDown);
+        this.thumb.addEventListener('pointermove', onPointerMove);
+        this.thumb.addEventListener('pointerup', onPointerUp);
+
+        // prevent touch scrolling on the control
+        this.container.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+        this.updateVisuals();
         return this.container;
     }
 
     setMax(ft: number): void {
-        this.slider.max = String(ft);
+        this.max = ft;
+        // clamp current value
+        if (this.value > this.max) {
+            this.value = this.max;
+            this.onChange(this.value);
+        }
+        this.updateVisuals();
+    }
+
+    private updateFromPointer(e: PointerEvent): void {
+        const rect = this.track.getBoundingClientRect();
+        // bottom = 0, top = max; invert Y
+        const ratio = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        const raw = ratio * this.max;
+        // snap to nearest 100
+        this.value = Math.round(raw / 100) * 100;
+        this.value = Math.max(0, Math.min(this.max, this.value));
+        this.label.textContent = `${this.value.toLocaleString()} ft`;
+        this.updateVisuals();
+        this.onChange(this.value);
+    }
+
+    private updateVisuals(): void {
+        const pct = this.max > 0 ? (this.value / this.max) * 100 : 0;
+        this.fill.style.height = `${pct}%`;
+        this.thumb.style.bottom = `${pct}%`;
     }
 }

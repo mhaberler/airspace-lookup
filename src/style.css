@@ -182,6 +182,9 @@ body {
   align-items: center;
   height: 70vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .altitude-slider-title {
@@ -190,14 +193,44 @@ body {
   margin-bottom: 6px;
 }
 
-.altitude-slider {
-  writing-mode: vertical-lr;
-  direction: rtl;
+.altitude-slider-track {
+  position: relative;
   flex: 1;
-  width: 28px;
-  margin: 0;
+  width: 44px;
+  background: #e0e0e0;
+  border-radius: 22px;
   cursor: pointer;
-  accent-color: #e74c3c;
+  touch-action: none;
+}
+
+.altitude-slider-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, #e74c3c, #f39c12);
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+.altitude-slider-thumb {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 28px;
+  height: 28px;
+  background: white;
+  border: 3px solid #e74c3c;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  touch-action: none;
+  z-index: 2;
+}
+
+.altitude-slider-thumb:active {
+  cursor: grabbing;
+  transform: translate(-50%, 50%) scale(1.15);
 }
 
 .altitude-slider-label {
