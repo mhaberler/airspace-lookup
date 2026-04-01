@@ -161,7 +161,7 @@ export class AirspaceStackControl extends L.Control {
         L.DomEvent.disableScrollPropagation(this.container);
 
         const title = L.DomUtil.create('div', 'airspace-stack-title', this.container) as HTMLDivElement;
-        title.textContent = 'Airspace Stack';
+        title.textContent = 'Airspace';
 
         this.stackArea = L.DomUtil.create('div', 'airspace-stack-area', this.container) as HTMLDivElement;
 

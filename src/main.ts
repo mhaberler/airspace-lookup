@@ -162,8 +162,7 @@ function highlightAirspaceOnMap(entry: AirspaceEntry): void {
 }
 
 function updateUrl(): void {
-    const pos = currentMarker ? currentMarker.getLatLng() : null;
-    if (!pos) return;
+    const pos = currentMarker ? currentMarker.getLatLng() : map.getCenter();
     const params = new URLSearchParams();
     params.set('lat', pos.lat.toFixed(6));
     params.set('lng', pos.lng.toFixed(6));
@@ -231,7 +230,7 @@ async function onMapClick(
     } else {
         stackControl.clear();
     }
-    updateUrl();
+
 }
 
 function clearAll(): void {
