@@ -315,7 +315,7 @@ async function onMapClick(
     // ── Airport markers ──────────────────────────────────────────────────
     for (const m of airportMarkers) m.remove();
     airportMarkers = [];
-    for (const airport of airports) {
+    for (const airport of airports.filter(a => a.frequencies?.length)) {
         const [lngA, latA] = airport.geometry.coordinates;
         const color = airportColor(airport.type);
         const marker = L.circleMarker([latA, lngA], {
