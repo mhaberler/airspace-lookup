@@ -312,6 +312,8 @@ async function onMapClick(
         stackControl.clear();
     }
 
+    for (const m of airportMarkers) m.bringToFront();
+
 }
 
 function clearAll(): void {
@@ -352,6 +354,7 @@ async function refreshAirports(): Promise<void> {
         marker.addTo(map);
         airportMarkers.push(marker);
     }
+    for (const m of airportMarkers) m.bringToFront();
 }
 
 function scheduleRefreshAirports(): void {
