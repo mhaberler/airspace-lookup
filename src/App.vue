@@ -96,6 +96,12 @@ onMounted(() => {
     maxWidth: 300,
   }).addTo(map)
 
+  let currentMarker: L.Marker | null = null
+  let currentGeojsonLayer: L.GeoJSON | null = null
+  let highlightedLayer: L.Path | null = null
+  let airportMarkers: L.CircleMarker[] = []
+  let stackControl!: AirspaceStackControl
+
   const HomeControl = L.Control.extend({
     options: { position: 'topleft' as L.ControlPosition },
     onAdd(_map: L.Map) {
@@ -154,6 +160,7 @@ onMounted(() => {
       return btn
     },
   })
+
   new ShareControl().addTo(map)
 
   const GithubControl = L.Control.extend({
@@ -171,11 +178,6 @@ onMounted(() => {
     },
   })
   new GithubControl().addTo(map)
-
-  let currentMarker: L.Marker | null = null
-  let currentGeojsonLayer: L.GeoJSON | null = null
-  let highlightedLayer: L.Path | null = null
-  let airportMarkers: L.CircleMarker[] = []
 
   const AIRPORT_ICON_COLOR: Record<number, string> = {
     3: '#1565C0',
@@ -252,7 +254,7 @@ onMounted(() => {
     history.replaceState(null, '', `${location.pathname}?${params}`)
   }
 
-  const stackControl = new AirspaceStackControl({
+  stackControl = new AirspaceStackControl({
     onBlockClicked: (entry) => highlightAirspaceOnMap(entry),
     onAltChanged: () => updateUrl(),
   })
