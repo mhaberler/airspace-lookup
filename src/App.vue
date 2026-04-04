@@ -44,6 +44,16 @@ onMounted(() => {
     zIndex: openFlightMapsOverlay.zIndex,
   })
 
+  const openAipLayer = L.tileLayer(
+    `https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=${encodeURIComponent(import.meta.env.VITE_OPENAIP_KEY as string)}`,
+    {
+      attribution: '&copy; <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>',
+      maxZoom: 14,
+      opacity: 0.8,
+      zIndex: 4,
+    },
+  )
+
   // const skywaysLayer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=mah.priv.at', {
   //   attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
   //   maxNativeZoom: 13,
@@ -67,6 +77,7 @@ onMounted(() => {
   }
   const overlayLayers: Record<string, L.TileLayer> = {
     ofm: openFlightMapsLayer,
+    openaip: openAipLayer,
     // skyways: skywaysLayer,
     // thermals: thermalsLayer,
   }
@@ -75,7 +86,7 @@ onMounted(() => {
     center: [47, 15],
     zoom: 12,
     zoomControl: true,
-    layers: [m_mono],
+    layers: [m_mono, openAipLayer],
   })
 
   L.control.layers(
@@ -86,6 +97,7 @@ onMounted(() => {
     },
     {
       [openFlightMapsOverlay.name]: openFlightMapsLayer,
+      openAIP: openAipLayer,
       // Skyways: skywaysLayer,
       // 'Thermals Jul 07': thermalsLayer,
     },
@@ -386,6 +398,10 @@ onMounted(() => {
   }
   const overlays = params.get('overlays')
   if (overlays) {
+    // Respect URL overlay selection by clearing defaults first.
+    for (const layer of Object.values(overlayLayers)) {
+      map.removeLayer(layer)
+    }
     for (const key of overlays.split(',')) {
       if (overlayLayers[key]) map.addLayer(overlayLayers[key])
     }
