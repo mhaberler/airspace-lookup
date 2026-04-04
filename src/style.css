@@ -19,6 +19,14 @@
   height: 100%;
 }
 
+
+.github-link-control a svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
 .airspace-stack-resize-handle {
   position: absolute;
   left: 0;
