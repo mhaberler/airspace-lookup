@@ -246,6 +246,16 @@ export class AirspaceStackControl extends L.Control {
             this.container.classList.remove('resizing');
         });
 
+        // Close popup when clicking on empty space in stackArea
+        this.stackArea.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // Close popup if clicked on stackArea background, aircraft line, or ticks (not on a block)
+            if (target === this.stackArea || target === this.aircraftLine || target.classList.contains('airspace-stack-tick')) {
+                const popup = this.container.querySelector('.airspace-detail-popup');
+                if (popup) popup.remove();
+            }
+        });
+
         this.setupLineEvents();
         this.setAltitudeVisuals(0);
         this.renderTicks();
