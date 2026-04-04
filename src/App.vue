@@ -1,6 +1,6 @@
 <template>
-  <div id="app">
-    <div id="map"></div>
+  <div id="app" class="h-screen">
+    <div id="map" class="h-full w-full"></div>
   </div>
 </template>
 
