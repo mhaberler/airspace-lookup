@@ -16,17 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: npm
+      - uses: oven-sh/setup-bun@v1
 
-      - run: npm ci
-      - run: npm run build
+      - run: bun install
+      - run: bun run build
 
       # E2E smoke (no snapshot baseline required)
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: bun x playwright install --with-deps chromium
 
       - name: Smoke test
-        run: npx playwright test e2e/smoke.spec.ts
+        run: bun x playwright test e2e/smoke.spec.ts

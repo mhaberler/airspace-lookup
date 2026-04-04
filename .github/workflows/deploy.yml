@@ -20,15 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: npm
+      - uses: oven-sh/setup-bun@v1
 
-      - run: npm ci
+      - run: bun install
 
       - name: Build for GitHub Pages
-        run: npm run build
+        run: bun run build
         env:
           VITE_OPENAIP_KEY: ${{ secrets.VITE_OPENAIP_KEY }}
           VITE_BASE: /airspace-lookup/
