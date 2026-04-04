@@ -174,26 +174,75 @@ export class AirspaceStackControl extends L.Control {
         this.aircraftLine = L.DomUtil.create('div', 'airspace-stack-aircraft', this.stackArea) as HTMLDivElement;
         this.aircraftLabel = L.DomUtil.create('div', 'airspace-stack-aircraft-label', this.aircraftLine) as HTMLDivElement;
 
-        // Resize handle on left edge
-        const resizeHandle = L.DomUtil.create('div', 'airspace-stack-resize-handle', this.container) as HTMLDivElement;
-        let resizeDragging = false;
-        resizeHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+        // Left edge resize handle (horizontal)
+        const leftHandle = L.DomUtil.create('div', 'airspace-stack-resize-handle left', this.container) as HTMLDivElement;
+        let leftResizing = false;
+        leftHandle.addEventListener('pointerdown', (e: PointerEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            resizeDragging = true;
-            resizeHandle.setPointerCapture(e.pointerId);
+            leftResizing = true;
+            leftHandle.setPointerCapture(e.pointerId);
             this.container.classList.add('resizing');
         });
-        resizeHandle.addEventListener('pointermove', (e: PointerEvent) => {
-            if (!resizeDragging) return;
+        leftHandle.addEventListener('pointermove', (e: PointerEvent) => {
+            if (!leftResizing) return;
             e.preventDefault();
             const rect = this.container.getBoundingClientRect();
             const newWidth = Math.max(80, Math.min(window.innerWidth * 0.7, rect.right - e.clientX));
             this.container.style.width = `${newWidth}px`;
             this.manualWidth = true;
         });
-        resizeHandle.addEventListener('pointerup', () => {
-            resizeDragging = false;
+        leftHandle.addEventListener('pointerup', () => {
+            leftResizing = false;
+            this.container.classList.remove('resizing');
+        });
+
+        // Top edge resize handle (vertical)
+        const topHandle = L.DomUtil.create('div', 'airspace-stack-resize-handle top', this.container) as HTMLDivElement;
+        let topResizing = false;
+        topHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            topResizing = true;
+            topHandle.setPointerCapture(e.pointerId);
+            this.container.classList.add('resizing');
+        });
+        topHandle.addEventListener('pointermove', (e: PointerEvent) => {
+            if (!topResizing) return;
+            e.preventDefault();
+            const rect = this.container.getBoundingClientRect();
+            const newHeight = Math.max(100, rect.bottom - e.clientY);
+            this.container.style.height = `${newHeight}px`;
+            this.stackArea.style.height = `${newHeight - 35}px`;
+        });
+        topHandle.addEventListener('pointerup', () => {
+            topResizing = false;
+            this.container.classList.remove('resizing');
+        });
+
+        // Top-left corner resize handle (both dimensions)
+        const cornerHandle = L.DomUtil.create('div', 'airspace-stack-resize-handle corner', this.container) as HTMLDivElement;
+        let cornerResizing = false;
+        cornerHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            cornerResizing = true;
+            cornerHandle.setPointerCapture(e.pointerId);
+            this.container.classList.add('resizing');
+        });
+        cornerHandle.addEventListener('pointermove', (e: PointerEvent) => {
+            if (!cornerResizing) return;
+            e.preventDefault();
+            const rect = this.container.getBoundingClientRect();
+            const newWidth = Math.max(80, Math.min(window.innerWidth * 0.7, rect.right - e.clientX));
+            const newHeight = Math.max(100, rect.bottom - e.clientY);
+            this.container.style.width = `${newWidth}px`;
+            this.container.style.height = `${newHeight}px`;
+            this.stackArea.style.height = `${newHeight - 35}px`;
+            this.manualWidth = true;
+        });
+        cornerHandle.addEventListener('pointerup', () => {
+            cornerResizing = false;
             this.container.classList.remove('resizing');
         });
 
