@@ -188,8 +188,6 @@
 
 .airspace-detail-popup {
   position: fixed;
-  right: 0.5rem;
-  bottom: 0.5rem;
   width: min(16.25rem, calc(100vw - 1rem));
   max-height: 50vh;
   overflow-y: auto;

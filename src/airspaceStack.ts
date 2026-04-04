@@ -358,8 +358,8 @@ export class AirspaceStackControl extends L.Control {
             const label = L.DomUtil.create('div', 'airspace-block-label', block) as HTMLDivElement;
             label.innerHTML = `<span class="airspace-block-name">${entry.name}</span>`;
 
-            block.addEventListener('click', () => {
-                this.showDetail(entry, block);
+            block.addEventListener('click', (e: MouseEvent) => {
+                this.showDetail(entry, e);
                 this.onBlockClicked?.(entry, i);
             });
             block.title = `${entry.name}: ${entry.lowerLabel} – ${entry.upperLabel}`;
@@ -428,7 +428,7 @@ export class AirspaceStackControl extends L.Control {
         });
     }
 
-    private showDetail(entry: AirspaceEntry, _anchor: HTMLElement): void {
+    private showDetail(entry: AirspaceEntry, event: MouseEvent): void {
         // remove any existing detail popup
         const old = this.container.querySelector('.airspace-detail-popup');
         if (old) old.remove();
@@ -446,5 +446,34 @@ export class AirspaceStackControl extends L.Control {
             Status: ${activeHtml} (${entry.activeReason})${entry.flags.length ? `<br>${entry.flags.join(', ')}` : ''}
         `;
         popup.querySelector('.airspace-detail-close')!.addEventListener('click', () => popup.remove());
+
+        // Position popup at click location, centered, but always fully visible
+        popup.style.position = 'fixed';
+        popup.style.pointerEvents = 'auto';
+
+        // Temporarily display to measure size
+        popup.style.visibility = 'hidden';
+        popup.style.left = '0';
+        popup.style.top = '0';
+
+        // Force layout to get dimensions
+        this.container.appendChild(popup);
+        const rect = popup.getBoundingClientRect();
+        const popupWidth = rect.width;
+        const popupHeight = rect.height;
+
+        // Calculate centered position at click point
+        let x = event.clientX - popupWidth / 2;
+        let y = event.clientY - popupHeight / 2;
+
+        // Keep within viewport bounds with 8px margin
+        const margin = 8;
+        x = Math.max(margin, Math.min(x, window.innerWidth - popupWidth - margin));
+        y = Math.max(margin, Math.min(y, window.innerHeight - popupHeight - margin));
+
+        // Apply final position
+        popup.style.left = `${x}px`;
+        popup.style.top = `${y}px`;
+        popup.style.visibility = 'visible';
     }
 }
