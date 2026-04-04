@@ -44,21 +44,21 @@ onMounted(() => {
     zIndex: openFlightMapsOverlay.zIndex,
   })
 
-  const skywaysLayer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=mah.priv.at', {
-    attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
-    maxNativeZoom: 13,
-    maxZoom: 18,
-    tms: true,
-    zIndex: 3,
-  })
+  // const skywaysLayer = L.tileLayer('https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=mah.priv.at', {
+  //   attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
+  //   maxNativeZoom: 13,
+  //   maxZoom: 18,
+  //   tms: true,
+  //   zIndex: 3,
+  // })
 
-  const thermalsLayer = L.tileLayer('https://thermal.kk7.ch/tiles/thermals_jul_07/{z}/{x}/{y}.png?src=mah.priv.at', {
-    attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
-    maxNativeZoom: 12,
-    maxZoom: 18,
-    tms: true,
-    zIndex: 4,
-  })
+  // const thermalsLayer = L.tileLayer('https://thermal.kk7.ch/tiles/thermals_jul_07/{z}/{x}/{y}.png?src=mah.priv.at', {
+  //   attribution: '<a href="https://thermal.kk7.ch/" target="_blank">thermal.kk7.ch</a> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC-BY-NC-SA</a>',
+  //   maxNativeZoom: 12,
+  //   maxZoom: 18,
+  //   tms: true,
+  //   zIndex: 4,
+  // })
 
   const baseLayers: Record<string, L.TileLayer> = {
     osm: m_mono,
@@ -67,8 +67,8 @@ onMounted(() => {
   }
   const overlayLayers: Record<string, L.TileLayer> = {
     ofm: openFlightMapsLayer,
-    skyways: skywaysLayer,
-    thermals: thermalsLayer,
+    // skyways: skywaysLayer,
+    // thermals: thermalsLayer,
   }
 
   const map = L.map('map', {
@@ -86,8 +86,8 @@ onMounted(() => {
     },
     {
       [openFlightMapsOverlay.name]: openFlightMapsLayer,
-      Skyways: skywaysLayer,
-      'Thermals Jul 07': thermalsLayer,
+      // Skyways: skywaysLayer,
+      // 'Thermals Jul 07': thermalsLayer,
     },
   ).addTo(map)
 
