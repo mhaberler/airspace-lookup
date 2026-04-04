@@ -249,3 +249,23 @@
     font-size: 0.75rem;
   }
 }
+
+.home-control a {
+  font-size: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.github-control a {
+  font-size: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.github-control a svg {
+  width: 20px;
+  height: 20px;
+  color: #333;
+}
