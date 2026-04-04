@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vue from '@vitejs/plugin-vue'
 import tailwind from '@tailwindcss/vite'
 
 export default defineConfig(({ mode }) => {
