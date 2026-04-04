@@ -27,6 +27,8 @@
     "@maxel01/vue-leaflet": "^1.0.0-beta.7",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.4",
+    "vite-plugin-devtools-json": "^1.0.0",
+    "vite-plugin-vue-devtools": "^8.1.1",
     "vue": "^3.5.32"
   }
 }

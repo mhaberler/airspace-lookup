@@ -1,7 +1,8 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwind from '@tailwindcss/vite'
-
+import DevtoolsJson from 'vite-plugin-devtools-json'
+import VueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig(({ mode }) => {
   // Default: best DX for local dev/CI
   // Override for GitHub Pages build:
@@ -12,7 +13,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [vue(), tailwind()],
+    plugins: [vue(), tailwind(),
+    ...(mode === 'development' ? [DevtoolsJson(), VueDevTools()] : []),
+    ],
     build: {
       outDir,
       emptyOutDir: true,
