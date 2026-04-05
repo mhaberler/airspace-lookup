@@ -144,6 +144,29 @@ onMounted(() => {
   })
   new HomeControl().addTo(map)
 
+  function copyText(text: string): Promise<boolean> {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => false)
+    }
+
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return Promise.resolve(ok)
+    } catch {
+      return Promise.resolve(false)
+    }
+  }
+
   const ShareControl = L.Control.extend({
     options: { position: 'topleft' as L.ControlPosition },
     onAdd(_map: L.Map) {
@@ -160,7 +183,12 @@ onMounted(() => {
         const z = _map.getZoom()
         const alt = stackControl.getValue()
         const url = `${location.origin}${location.pathname}?lat=${pos.lat.toFixed(6)}&lng=${pos.lng.toFixed(6)}&z=${z}&alt=${alt}`
-        navigator.clipboard.writeText(url).then(() => {
+        copyText(url).then((ok) => {
+          if (!ok) {
+            console.warn('Copy failed: Clipboard API unavailable in this context')
+            return
+          }
+
           btn.classList.add('copied')
           a.innerHTML = '&#x2713;'
           setTimeout(() => {
