@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import L from 'leaflet'
-import { MarkerCallback, markerCallback, fetchAirports, airportPopupHtml, airportTypeName } from './markerCallback'
+import { MarkerCallback, markerCallback, fetchAirports, airportPopupHtml, airportTypeName, AIRPORT_FETCH_RADIUS_M } from './markerCallback'
 import { AirspaceStackControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack'
 
 onMounted(() => {
@@ -111,8 +111,18 @@ onMounted(() => {
   let currentMarker: L.Marker | null = null
   let currentGeojsonLayer: L.GeoJSON | null = null
   let highlightedLayer: L.Path | null = null
-  let airportMarkers: L.CircleMarker[] = []
+  const airportMarkerById = new Map<string, L.CircleMarker>()
   let stackControl!: AirspaceStackControl
+  let lastAirportFetchCenter: L.LatLng | null = null
+  let airportRefreshInFlight = false
+  let pendingAirportRefreshCenter: L.LatLng | null = null
+  const AIRPORT_REFETCH_THRESHOLD_M = AIRPORT_FETCH_RADIUS_M / 2
+  const AIRPORT_DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).get('debugAirports') === '1'
+
+  function logAirportRefresh(event: string, details: Record<string, unknown>): void {
+    if (!AIRPORT_DEBUG) return
+    console.debug(`[airports] ${event}`, details)
+  }
 
   const HomeControl = L.Control.extend({
     options: { position: 'topleft' as L.ControlPosition },
@@ -347,7 +357,7 @@ onMounted(() => {
       stackControl.clear()
     }
 
-    for (const m of airportMarkers) m.bringToFront()
+    for (const marker of airportMarkerById.values()) marker.bringToFront()
   }
 
   function clearAll(): void {
@@ -365,30 +375,93 @@ onMounted(() => {
 
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
-  async function refreshAirports(): Promise<void> {
-    const { lat, lng } = map.getCenter()
-    const airports = await fetchAirports(lat, lng)
-    for (const m of airportMarkers) m.remove()
-    airportMarkers = []
-    for (const airport of airports) {
-      const [lngA, latA] = airport.geometry.coordinates
-      const color = airportColor(airport.type)
-      const marker = L.circleMarker([latA, lngA], {
-        radius: 7,
-        color,
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.55,
-      })
-      marker.bindPopup(airportPopupHtml(airport), { maxWidth: 320 })
-      marker.bindTooltip(
-        `${airport.icaoCode ? airport.icaoCode + ' · ' : ''}${airport.name} (${airportTypeName(airport.type)})`,
-        { sticky: true },
-      )
-      marker.addTo(map)
-      airportMarkers.push(marker)
+  async function refreshAirports(targetCenter?: L.LatLngExpression): Promise<void> {
+    const center = targetCenter ? L.latLng(targetCenter) : map.getCenter()
+
+    if (lastAirportFetchCenter) {
+      const dist = map.distance(lastAirportFetchCenter, center)
+      if (dist <= AIRPORT_REFETCH_THRESHOLD_M) {
+        logAirportRefresh('skip-threshold', {
+          distanceM: Math.round(dist),
+          thresholdM: AIRPORT_REFETCH_THRESHOLD_M,
+          center: center.toString(),
+          lastCenter: lastAirportFetchCenter.toString(),
+        })
+        return
+      }
     }
-    for (const m of airportMarkers) m.bringToFront()
+
+    if (airportRefreshInFlight) {
+      pendingAirportRefreshCenter = center
+      logAirportRefresh('queue-inflight', { center: center.toString() })
+      return
+    }
+
+    airportRefreshInFlight = true
+    try {
+      logAirportRefresh('fetch-start', { center: center.toString() })
+      const airports = await fetchAirports(center.lat, center.lng)
+      let added = 0
+      let updated = 0
+      for (const airport of airports) {
+        const [lngA, latA] = airport.geometry.coordinates
+        const color = airportColor(airport.type)
+        const existing = airportMarkerById.get(airport._id)
+
+        if (existing) {
+          existing.setLatLng([latA, lngA])
+          existing.setStyle({
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.55,
+          })
+          existing.setRadius(7)
+          existing.bindPopup(airportPopupHtml(airport), { maxWidth: 320 })
+          existing.bindTooltip(
+            `${airport.icaoCode ? airport.icaoCode + ' · ' : ''}${airport.name} (${airportTypeName(airport.type)})`,
+            { sticky: true },
+          )
+          updated += 1
+          continue
+        }
+
+        const marker = L.circleMarker([latA, lngA], {
+          radius: 7,
+          color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.55,
+        })
+        marker.bindPopup(airportPopupHtml(airport), { maxWidth: 320 })
+        marker.bindTooltip(
+          `${airport.icaoCode ? airport.icaoCode + ' · ' : ''}${airport.name} (${airportTypeName(airport.type)})`,
+          { sticky: true },
+        )
+        marker.addTo(map)
+        airportMarkerById.set(airport._id, marker)
+        added += 1
+      }
+      for (const marker of airportMarkerById.values()) marker.bringToFront()
+
+      lastAirportFetchCenter = center
+      logAirportRefresh('fetch-done', {
+        fetched: airports.length,
+        added,
+        updated,
+        retained: airportMarkerById.size,
+        center: center.toString(),
+      })
+    } finally {
+      airportRefreshInFlight = false
+
+      if (pendingAirportRefreshCenter) {
+        const pendingCenter = pendingAirportRefreshCenter
+        pendingAirportRefreshCenter = null
+        logAirportRefresh('drain-queued', { center: pendingCenter.toString() })
+        void refreshAirports(pendingCenter)
+      }
+    }
   }
 
   function scheduleRefreshAirports(): void {
@@ -399,7 +472,11 @@ onMounted(() => {
     }, 500)
   }
 
-  map.on('click', (e: L.LeafletMouseEvent) => onMapClick(e, markerCallback))
+  map.on('click', (e: L.LeafletMouseEvent) => {
+    onMapClick(e, markerCallback)
+    logAirportRefresh('trigger-click', { center: e.latlng.toString() })
+    void refreshAirports(e.latlng)
+  })
   map.on('contextmenu', () => clearAll())
   map.on('moveend', () => { updateUrl(); scheduleRefreshAirports() })
   map.on('baselayerchange', () => updateUrl())

@@ -2,6 +2,7 @@ import { icaoClassName, airspaceTypeName, activityName } from './airspaceStack';
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string;
 const DIST_METERS = 10;
+export const AIRPORT_FETCH_RADIUS_M = 300000;
 
 // ── Airport type names ──────────────────────────────────────────────────────
 const AIRPORT_TYPE_NAMES: Record<number, string> = {
@@ -354,7 +355,7 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
 };
 
 export async function fetchAirports(lat: number, lng: number): Promise<AirportItem[]> {
-    const url = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=300000&apiKey=${API_KEY}`;
+    const url = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=${AIRPORT_FETCH_RADIUS_M}&apiKey=${API_KEY}`;
     try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
