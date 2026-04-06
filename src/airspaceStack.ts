@@ -145,9 +145,12 @@ export class AirspaceStackControl extends L.Control {
     private aircraftAlt = 0;
     private maxAlt = MIN_CEILING;
     private dragging = false;
-    private manualWidth = false;
+    private manualWidthPx: number | null = null;
     private onBlockClicked?: (entry: AirspaceEntry, index: number) => void;
     private onAltChanged?: (ft: number) => void;
+    private readonly onWindowResize = (): void => {
+        this.syncWidth(Math.max(1, new Set(this.columnOf).size));
+    };
 
     constructor(opts?: {
         onBlockClicked?: (entry: AirspaceEntry, index: number) => void;
@@ -162,6 +165,7 @@ export class AirspaceStackControl extends L.Control {
         this.container = L.DomUtil.create('div', 'airspace-stack-control') as HTMLDivElement;
         L.DomEvent.disableClickPropagation(this.container);
         L.DomEvent.disableScrollPropagation(this.container);
+        window.addEventListener('resize', this.onWindowResize);
 
         // Header: title + current altitude value
         const header = L.DomUtil.create('div', 'airspace-stack-header', this.container) as HTMLDivElement;
@@ -188,9 +192,9 @@ export class AirspaceStackControl extends L.Control {
             if (!leftResizing) return;
             e.preventDefault();
             const rect = this.container.getBoundingClientRect();
-            const newWidth = Math.max(80, Math.min(window.innerWidth * 0.7, rect.right - e.clientX));
-            this.container.style.width = `${newWidth}px`;
-            this.manualWidth = true;
+            const newWidth = Math.max(this.getMinWidthPx(), rect.right - e.clientX);
+            this.manualWidthPx = newWidth;
+            this.syncWidth(Math.max(1, new Set(this.columnOf).size));
         });
         leftHandle.addEventListener('pointerup', () => {
             leftResizing = false;
@@ -234,12 +238,12 @@ export class AirspaceStackControl extends L.Control {
             if (!cornerResizing) return;
             e.preventDefault();
             const rect = this.container.getBoundingClientRect();
-            const newWidth = Math.max(80, Math.min(window.innerWidth * 0.7, rect.right - e.clientX));
+            const newWidth = Math.max(this.getMinWidthPx(), rect.right - e.clientX);
             const newHeight = Math.max(100, rect.bottom - e.clientY);
-            this.container.style.width = `${newWidth}px`;
+            this.manualWidthPx = newWidth;
+            this.syncWidth(Math.max(1, new Set(this.columnOf).size));
             this.container.style.height = `${newHeight}px`;
             this.stackArea.style.height = `${newHeight - 35}px`;
-            this.manualWidth = true;
         });
         cornerHandle.addEventListener('pointerup', () => {
             cornerResizing = false;
@@ -259,8 +263,44 @@ export class AirspaceStackControl extends L.Control {
         this.setupLineEvents();
         this.setAltitudeVisuals(0);
         this.renderTicks();
+        requestAnimationFrame(() => this.syncWidth(1));
 
         return this.container;
+    }
+
+    onRemove(_map: L.Map): void {
+        window.removeEventListener('resize', this.onWindowResize);
+    }
+
+    private getMinWidthPx(): number {
+        return parseFloat(getComputedStyle(this.container).minWidth) || 100;
+    }
+
+    private getViewportMarginPx(): number {
+        return parseFloat(getComputedStyle(this.container).getPropertyValue('--airspace-stack-viewport-margin')) || 8;
+    }
+
+    private getColumnWidthVw(): number {
+        return parseFloat(getComputedStyle(this.container).getPropertyValue('--airspace-stack-column-width-vw')) || 5;
+    }
+
+    private getAvailableWidthPx(): number {
+        const rect = this.container.getBoundingClientRect();
+        const margin = this.getViewportMarginPx();
+        return Math.max(this.getMinWidthPx(), rect.right - margin);
+    }
+
+    private clampWidthPx(widthPx: number): number {
+        return Math.max(this.getMinWidthPx(), Math.min(widthPx, this.getAvailableWidthPx()));
+    }
+
+    private computeAutoWidthPx(numCols: number): number {
+        return window.innerWidth * this.getColumnWidthVw() * Math.max(1, numCols) / 100;
+    }
+
+    private syncWidth(numCols: number): void {
+        const desiredWidth = this.manualWidthPx ?? this.computeAutoWidthPx(numCols);
+        this.container.style.width = `${Math.round(this.clampWidthPx(desiredWidth))}px`;
     }
 
     private setupLineEvents(): void {
@@ -368,7 +408,7 @@ export class AirspaceStackControl extends L.Control {
 
         if (this.entries.length === 0) {
             this.columnOf = [];
-            this.container.style.width = '';
+            this.syncWidth(1);
             return;
         }
 
@@ -389,11 +429,7 @@ export class AirspaceStackControl extends L.Control {
 
         const numCols = columnTops.length;
 
-        // 7vw per column, minimum 8vw, cap at 40vw — skip if user manually resized
-        if (!this.manualWidth) {
-            const vw = Math.min(Math.max(numCols * 7, 8), 40);
-            this.container.style.width = `${vw}vw`;
-        }
+        this.syncWidth(numCols);
 
         // sort columns by ICAO class at current altitude, then render
         const colOrder = this.computeColumnOrder(numCols);

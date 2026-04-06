@@ -83,8 +83,11 @@
 }
 
 .airspace-stack-control {
+  --airspace-stack-column-width-vw: 5;
+  --airspace-stack-viewport-margin: 8px;
   position: relative;
   min-width: 100px;
+  max-width: calc(100vw - (var(--airspace-stack-viewport-margin) * 2));
   height: 80vh;
   box-sizing: border-box;
   padding: 0.5rem 0.25rem;
@@ -255,6 +258,7 @@
 
 @media (max-width: 480px) {
   .airspace-stack-control {
+    --airspace-stack-column-width-vw: 4;
     min-width: 80px;
     font-size: 0.625rem;
   }
