@@ -474,7 +474,14 @@ onMounted(() => {
     }, 500)
   }
 
+  function shouldIgnoreMapClick(e: L.LeafletMouseEvent): boolean {
+    const target = (e.originalEvent?.target as HTMLElement | null) ?? null
+    if (!target) return false
+    return Boolean(target.closest('.leaflet-popup, .airspace-stack-control, .airspace-detail-popup'))
+  }
+
   map.on('click', (e: L.LeafletMouseEvent) => {
+    if (shouldIgnoreMapClick(e)) return
     onMapClick(e, markerCallback)
     logAirportRefresh('trigger-click', { center: e.latlng.toString() })
     void refreshAirports(e.latlng)
