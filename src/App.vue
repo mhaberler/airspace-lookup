@@ -143,6 +143,8 @@ onMounted(() => {
             _map.fireEvent('click', { latlng } as L.LeafletMouseEvent)
             if (pos.coords.altitude != null) {
               stackControl.setValue(Math.round(pos.coords.altitude * 3.28084))
+            } else {
+              stackControl.setValue(0)
             }
           },
           (err) => console.warn('Geolocation error:', err.message),
