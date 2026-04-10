@@ -350,7 +350,10 @@ export const markerCallback: MarkerCallback = async (lat, lng) => {
         return { popupText, geojson };
     } catch (err) {
         console.error('OpenAIP error:', err);
-        return { popupText: `Error: ${err}`, geojson: null };
+        const msg = !navigator.onLine
+            ? 'Offline — no cached data for this location'
+            : `Error: ${err}`;
+        return { popupText: msg, geojson: null };
     }
 };
 
