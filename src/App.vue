@@ -1,14 +1,41 @@
 <template>
-  <div id="app" class="h-screen">
-    <div id="map" class="h-full w-full"></div>
+  <div id="app" class="h-screen flex flex-col">
+    <TitleBar
+      v-model:mode="state.mode"
+      v-model:follow="state.follow"
+      v-model:showAirspace="state.showAirspace"
+      v-model:showStack="state.showStack"
+      v-model:showAirports="state.showAirports"
+    />
+    <div id="map-container" class="flex-1 relative">
+      <div id="map" class="absolute inset-0"></div>
+      <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import L from 'leaflet'
 import { MarkerCallback, markerCallback, fetchAirports, airportPopupHtml, airportTypeName, AIRPORT_FETCH_RADIUS_M } from './markerCallback'
 import { AirspaceStackControl, AirspaceEntry, icaoClassName, airspaceTypeName, activityName, airspaceColor } from './airspaceStack'
+import TitleBar from './components/TitleBar.vue'
+
+const state = reactive({
+  mode: 'what-if' as 'track' | 'what-if',
+  follow: true,
+  showAirspace: true,
+  showStack: true,
+  showAirports: true,
+})
+
+const toastMsg = ref<string | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+function showToast(msg: string): void {
+  toastMsg.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMsg.value = null }, 4000)
+}
 
 onMounted(() => {
   L.Icon.Default.imagePath = 'img/icon/'
@@ -110,14 +137,24 @@ onMounted(() => {
 
   let currentMarker: L.Marker | null = null
   let currentGeojsonLayer: L.GeoJSON | null = null
+  let lastGeojsonFeatures: GeoJSON.FeatureCollection | null = null
   let highlightedLayer: L.Path | null = null
   const airportMarkerById = new Map<string, L.CircleMarker>()
   let stackControl!: AirspaceStackControl
+  let stackAttached = true
   let lastAirportFetchCenter: L.LatLng | null = null
   let airportRefreshInFlight = false
   let pendingAirportRefreshCenter: L.LatLng | null = null
   const AIRPORT_REFETCH_THRESHOLD_M = AIRPORT_FETCH_RADIUS_M / 2
+  const AIRSPACE_REFETCH_THRESHOLD_M = 10_000
   const AIRPORT_DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).get('debugAirports') === '1'
+
+  // Track-mode state
+  let watchId: number | null = null
+  let trackMarker: L.CircleMarker | null = null
+  let accuracyCircle: L.Circle | null = null
+  let lastAirspaceFetchCenter: L.LatLng | null = null
+  let firstFix = true
 
   function logAirportRefresh(event: string, details: Record<string, unknown>): void {
     if (!AIRPORT_DEBUG) return
@@ -289,7 +326,11 @@ onMounted(() => {
   }
 
   function updateUrl(): void {
-    const pos = currentMarker ? currentMarker.getLatLng() : map.getCenter()
+    const pos = currentMarker
+      ? currentMarker.getLatLng()
+      : trackMarker
+        ? trackMarker.getLatLng()
+        : map.getCenter()
     const params = new URLSearchParams()
     params.set('lat', pos.lat.toFixed(6))
     params.set('lng', pos.lng.toFixed(6))
@@ -305,6 +346,14 @@ onMounted(() => {
       .map(([key]) => key)
     if (activeOverlays.length) params.set('overlays', activeOverlays.join(','))
 
+    if (state.mode !== 'what-if') params.set('mode', state.mode)
+    if (state.follow) params.set('follow', '1')
+    const show: string[] = []
+    if (state.showAirspace) show.push('airspace')
+    if (state.showStack) show.push('stack')
+    if (state.showAirports) show.push('airports')
+    if (show.length < 3) params.set('show', show.join(','))
+
     history.replaceState(null, '', `${location.pathname}?${params}`)
   }
 
@@ -314,26 +363,15 @@ onMounted(() => {
   })
   stackControl.addTo(map)
 
-  async function onMapClick(e: L.LeafletMouseEvent, callback: MarkerCallback): Promise<void> {
-    const { lat, lng } = e.latlng
-    console.log(`Map clicked: lat=${lat.toFixed(6)}, lng=${lng.toFixed(6)}`)
-
-    if (currentMarker) {
-      currentMarker.setLatLng(e.latlng)
-    } else {
-      currentMarker = L.marker(e.latlng).addTo(map)
-    }
-
-    const { popupText, geojson } = await callback(lat, lng)
-    currentMarker.bindPopup(popupText).openPopup()
-
+  function renderGeojson(geojson: GeoJSON.FeatureCollection | null): void {
     resetHighlight()
     if (currentGeojsonLayer) {
       currentGeojsonLayer.remove()
       currentGeojsonLayer = null
     }
+    lastGeojsonFeatures = geojson
 
-    if (geojson) {
+    if (geojson && state.showAirspace) {
       currentGeojsonLayer = L.geoJSON(geojson, {
         style: (feature) => featureStyle(feature?.properties),
         onEachFeature: (feature, layer) => {
@@ -353,13 +391,36 @@ onMounted(() => {
           layer.bindPopup(`<b>${name}</b> (${typ}, ${cls}${act})<br>${lower} – ${upper}<br>${status}${flagsHtml}`)
         },
       }).addTo(map)
+    }
 
-      stackControl.update(geojson.features)
-    } else {
-      stackControl.clear()
+    if (state.showStack) {
+      if (geojson) stackControl.update(geojson.features)
+      else stackControl.clear()
     }
 
     for (const marker of airportMarkerById.values()) marker.bringToFront()
+  }
+
+  async function onMapClick(e: L.LeafletMouseEvent, callback: MarkerCallback): Promise<void> {
+    if (state.mode !== 'what-if') return
+
+    const { lat, lng } = e.latlng
+    console.log(`Map clicked: lat=${lat.toFixed(6)}, lng=${lng.toFixed(6)}`)
+
+    if (currentMarker) {
+      currentMarker.setLatLng(e.latlng)
+    } else {
+      currentMarker = L.marker(e.latlng).addTo(map)
+    }
+
+    if (state.showAirspace) {
+      const { popupText, geojson } = await callback(lat, lng)
+      currentMarker.bindPopup(popupText).openPopup()
+      renderGeojson(geojson)
+    } else {
+      currentMarker.closePopup().unbindPopup()
+      renderGeojson(null)
+    }
   }
 
   function clearAll(): void {
@@ -372,12 +433,14 @@ onMounted(() => {
       currentGeojsonLayer.remove()
       currentGeojsonLayer = null
     }
+    lastGeojsonFeatures = null
     stackControl.clear()
   }
 
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
   async function refreshAirports(targetCenter?: L.LatLngExpression): Promise<void> {
+    if (!state.showAirports) return
     const center = targetCenter ? L.latLng(targetCenter) : map.getCenter()
 
     if (lastAirportFetchCenter) {
@@ -474,6 +537,134 @@ onMounted(() => {
     }, 500)
   }
 
+  async function fetchAirspaceAt(latlng: L.LatLng): Promise<void> {
+    const { geojson } = await markerCallback(latlng.lat, latlng.lng)
+    renderGeojson(geojson)
+    lastAirspaceFetchCenter = latlng
+  }
+
+  function onFix(pos: GeolocationPosition): void {
+    const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude)
+    const accuracy = pos.coords.accuracy
+
+    if (!trackMarker) {
+      trackMarker = L.circleMarker(latlng, {
+        radius: 8,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: '#1a73e8',
+        fillOpacity: 1,
+      }).addTo(map)
+      accuracyCircle = L.circle(latlng, {
+        radius: accuracy,
+        color: '#1a73e8',
+        weight: 1,
+        fillColor: '#1a73e8',
+        fillOpacity: 0.1,
+      }).addTo(map)
+    } else {
+      trackMarker.setLatLng(latlng)
+      accuracyCircle?.setLatLng(latlng)
+      accuracyCircle?.setRadius(accuracy)
+    }
+
+    if (firstFix) {
+      map.setView(latlng, map.getZoom())
+      firstFix = false
+    } else if (state.follow && !map.getBounds().contains(latlng)) {
+      map.panTo(latlng)
+    }
+
+    if (pos.coords.altitude != null && state.showStack) {
+      stackControl.setValue(Math.round(pos.coords.altitude * 3.28084))
+    }
+
+    if (state.showAirspace) {
+      const needsFetch =
+        lastAirspaceFetchCenter === null ||
+        map.distance(lastAirspaceFetchCenter, latlng) > AIRSPACE_REFETCH_THRESHOLD_M
+      if (needsFetch) void fetchAirspaceAt(latlng)
+    }
+
+    if (state.showAirports) void refreshAirports(latlng)
+  }
+
+  function onGeoError(err: GeolocationPositionError): void {
+    console.warn('Geolocation error:', err.message)
+    showToast(`Location unavailable: ${err.message}`)
+    state.mode = 'what-if'
+  }
+
+  function startTracking(): void {
+    if (watchId !== null) return
+    firstFix = true
+    lastAirspaceFetchCenter = null
+    // Remove what-if pin if present
+    if (currentMarker) {
+      currentMarker.closePopup()
+      currentMarker.remove()
+      currentMarker = null
+    }
+    watchId = navigator.geolocation.watchPosition(onFix, onGeoError, {
+      enableHighAccuracy: true,
+      timeout: 20_000,
+      maximumAge: 1_000,
+    })
+  }
+
+  function stopTracking(): void {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId)
+      watchId = null
+    }
+    trackMarker?.remove()
+    trackMarker = null
+    accuracyCircle?.remove()
+    accuracyCircle = null
+    lastAirspaceFetchCenter = null
+    firstFix = true
+  }
+
+  function applyShowAirspace(): void {
+    if (state.showAirspace) {
+      if (lastGeojsonFeatures) renderGeojson(lastGeojsonFeatures)
+      else if (state.mode === 'track' && trackMarker) {
+        void fetchAirspaceAt(trackMarker.getLatLng())
+      }
+    } else {
+      if (currentGeojsonLayer) {
+        currentGeojsonLayer.remove()
+        currentGeojsonLayer = null
+      }
+      resetHighlight()
+    }
+  }
+
+  function applyShowStack(): void {
+    if (state.showStack && !stackAttached) {
+      stackControl.addTo(map)
+      stackAttached = true
+      if (lastGeojsonFeatures) stackControl.update(lastGeojsonFeatures.features)
+    } else if (!state.showStack && stackAttached) {
+      stackControl.remove()
+      stackAttached = false
+    }
+  }
+
+  function applyShowAirports(): void {
+    if (state.showAirports) {
+      for (const marker of airportMarkerById.values()) marker.addTo(map)
+      lastAirportFetchCenter = null
+      const center = state.mode === 'track' && trackMarker
+        ? trackMarker.getLatLng()
+        : map.getCenter()
+      void refreshAirports(center)
+    } else {
+      for (const marker of airportMarkerById.values()) marker.remove()
+      lastAirportFetchCenter = null
+    }
+  }
+
   function shouldIgnoreMapClick(e: L.LeafletMouseEvent): boolean {
     const target = (e.originalEvent?.target as HTMLElement | null) ?? null
     if (!target) return false
@@ -497,14 +688,19 @@ onMounted(() => {
   const lng = parseFloat(params.get('lng') ?? '')
   const z = parseInt(params.get('z') ?? '12', 10)
   const alt = parseInt(params.get('alt') ?? '', 10)
-  if (!isNaN(lat) && !isNaN(lng)) {
-    const latlng = L.latLng(lat, lng)
-    map.setView(latlng, z)
-    map.fireEvent('click', { latlng } as L.LeafletMouseEvent)
+
+  const urlMode = params.get('mode')
+  if (urlMode === 'track' || urlMode === 'what-if') state.mode = urlMode
+  const urlFollow = params.get('follow')
+  if (urlFollow !== null) state.follow = urlFollow === '1'
+  const urlShow = params.get('show')
+  if (urlShow !== null) {
+    const keys = new Set(urlShow.split(',').filter(Boolean))
+    state.showAirspace = keys.has('airspace')
+    state.showStack = keys.has('stack')
+    state.showAirports = keys.has('airports')
   }
-  if (!isNaN(alt) && alt > 0) {
-    stackControl.setValue(alt)
-  }
+
   const base = params.get('base')
   if (base && baseLayers[base]) {
     map.removeLayer(m_mono)
@@ -519,6 +715,37 @@ onMounted(() => {
     for (const key of overlays.split(',')) {
       if (overlayLayers[key]) map.addLayer(overlayLayers[key])
     }
+  }
+
+  // Apply initial stack visibility (default is shown)
+  if (!state.showStack) {
+    stackControl.remove()
+    stackAttached = false
+  }
+
+  // Register reactive watchers (after initial state applied to avoid spurious work)
+  watch(() => state.mode, (newMode) => {
+    if (newMode === 'track') startTracking()
+    else stopTracking()
+  })
+  watch(() => state.showAirspace, () => applyShowAirspace())
+  watch(() => state.showStack, () => applyShowStack())
+  watch(() => state.showAirports, () => applyShowAirports())
+  watch(state, () => updateUrl(), { deep: true })
+
+  if (!isNaN(lat) && !isNaN(lng)) {
+    const latlng = L.latLng(lat, lng)
+    map.setView(latlng, z)
+    if (state.mode === 'what-if') {
+      map.fireEvent('click', { latlng } as L.LeafletMouseEvent)
+    }
+  }
+  if (!isNaN(alt) && alt > 0) {
+    stackControl.setValue(alt)
+  }
+
+  if (state.mode === 'track') {
+    startTracking()
   }
 
   refreshAirports()
