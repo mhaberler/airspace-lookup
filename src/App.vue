@@ -413,9 +413,13 @@ onMounted(() => {
       currentMarker = L.marker(e.latlng).addTo(map)
     }
 
-    if (state.showAirspace) {
+    if (state.showAirspace || state.showStack) {
       const { popupText, geojson } = await callback(lat, lng)
-      currentMarker.bindPopup(popupText).openPopup()
+      if (state.showAirspace) {
+        currentMarker.bindPopup(popupText).openPopup()
+      } else {
+        currentMarker.closePopup().unbindPopup()
+      }
       renderGeojson(geojson)
     } else {
       currentMarker.closePopup().unbindPopup()
@@ -579,7 +583,7 @@ onMounted(() => {
       stackControl.setValue(Math.round(pos.coords.altitude * 3.28084))
     }
 
-    if (state.showAirspace) {
+    if (state.showAirspace || state.showStack) {
       const needsFetch =
         lastAirspaceFetchCenter === null ||
         map.distance(lastAirspaceFetchCenter, latlng) > AIRSPACE_REFETCH_THRESHOLD_M
@@ -627,9 +631,16 @@ onMounted(() => {
 
   function applyShowAirspace(): void {
     if (state.showAirspace) {
-      if (lastGeojsonFeatures) renderGeojson(lastGeojsonFeatures)
-      else if (state.mode === 'track' && trackMarker) {
-        void fetchAirspaceAt(trackMarker.getLatLng())
+      if (lastGeojsonFeatures) {
+        renderGeojson(lastGeojsonFeatures)
+      } else {
+        const anchor =
+          state.mode === 'track' && trackMarker
+            ? trackMarker.getLatLng()
+            : currentMarker
+              ? currentMarker.getLatLng()
+              : null
+        if (anchor) void fetchAirspaceAt(anchor)
       }
     } else {
       if (currentGeojsonLayer) {
@@ -644,7 +655,17 @@ onMounted(() => {
     if (state.showStack && !stackAttached) {
       stackControl.addTo(map)
       stackAttached = true
-      if (lastGeojsonFeatures) stackControl.update(lastGeojsonFeatures.features)
+      if (lastGeojsonFeatures) {
+        stackControl.update(lastGeojsonFeatures.features)
+      } else {
+        const anchor =
+          state.mode === 'track' && trackMarker
+            ? trackMarker.getLatLng()
+            : currentMarker
+              ? currentMarker.getLatLng()
+              : null
+        if (anchor) void fetchAirspaceAt(anchor)
+      }
     } else if (!state.showStack && stackAttached) {
       stackControl.remove()
       stackAttached = false
