@@ -2,7 +2,9 @@
 
 Interactive map tool for querying airspace data at any location using the [OpenAIP](https://www.openaip.net/) API. Click anywhere on the map to see which airspaces cover that point, with altitude boundaries, operating hours, and active/inactive status.
 
-![screenshot.png](/img/screenshot.png)
+
+
+![screenshot.jpg](/img/screenshot.jpg)
 
 ## Features
 
@@ -18,6 +20,9 @@ Interactive map tool for querying airspace data at any location using the [OpenA
 - **Home button**: geolocates your position, centers the map, places a marker, loads airspaces, and sets the altitude slider if GPS altitude is available
 - **Share button**: copies a deep-link URL with current location, zoom, and altitude to the clipboard
 - **URL deep-linking**: open the app with `?lat=...&lng=...&z=...&alt=...` to restore a specific view with airspaces loaded
+- **Two operating modes**: switch between click-driven what-if exploration and live GPS-based track mode, with mode and toggle state synced into the URL
+- **Follow mode**: in track mode, an optional follow toggle recenters the map only when your live position leaves the current viewport
+- **Offline support for cached locations**: the service worker caches previously visited map tiles and API responses so revisiting the same area can keep working offline; first-time queries for uncached coordinates still require connectivity
 - **Live URL updates**: the browser URL updates as you click locations, zoom, or change altitude
 - **OpenFlightMaps overlay**: optional aviation chart tile layer
 
@@ -54,9 +59,26 @@ The repo includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) tha
 
 Add `VITE_OPENAIP_KEY` as a **repository secret** under Settings > Secrets and variables > Actions.
 
+## Interaction modes
+
+The app supports two map interaction modes, selected from the title bar:
+
+- **What-if mode**: the default mode. Click anywhere on the map to drop a marker, fetch airspaces for that location, update the vertical stack, and refresh nearby airports. This preserves the original click-to-inspect workflow for planning and scenario testing.
+- **Track mode**: starts a live GPS watch using the browser geolocation API. The map shows your current position with an accuracy ring, refreshes airspaces as you move, refreshes airports over a larger movement threshold, and uses GPS altitude to drive the airspace stack altitude indicator when available.
+- **Follow toggle**: available in track mode. When enabled, the map pans only when your live position moves outside the current viewport, avoiding constant recentering while still keeping you visible.
+
+Mode and feature toggles are reflected in the URL through query parameters such as `?mode=`, `?show=`, and `?follow=1`, so the current view can be shared or restored.
+
+## Caching and offline use
+
+The app includes a service worker that caches assets, map tiles, and API responses for locations you have already visited. That allows the app to keep working offline for repeat lookups in previously viewed areas.
+
+Offline support is not a full preloaded dataset: if you request coordinates that are not already cached, the lookup will fail until the device is back online. In that case the app reports an offline cache miss instead of crashing.
+
 ## Usage
 
-- **Left click** on the map: query airspaces at that location
+- **Left click** on the map in what-if mode: query airspaces at that location
+- **Track mode**: use the title bar to start live GPS tracking; the app will revert to what-if mode if geolocation fails
 - **Right click**: clear markers and polygons
 - **Home button** (top-left): geolocate and center map at your position
 - **Share button** (top-left): copy a shareable URL to the clipboard
