@@ -1,27 +1,21 @@
 <template>
-  <div class="title-bar flex items-center gap-3 h-10 px-3 bg-gray-100 border-b border-gray-300 text-sm select-none shrink-0">
-    <div class="flex items-center gap-2">
-      <label class="flex items-center gap-1 cursor-pointer">
-        <input
-          type="radio"
-          name="mode"
-          :checked="mode === 'track'"
-          @change="$emit('update:mode', 'track')"
-        />
-        <span>Track</span>
-      </label>
-      <label class="flex items-center gap-1 cursor-pointer">
-        <input
-          type="radio"
-          name="mode"
-          :checked="mode === 'what-if'"
-          @change="$emit('update:mode', 'what-if')"
-        />
-        <span>What-if</span>
-      </label>
+  <div class="title-bar flex flex-wrap items-center gap-x-3 gap-y-1 bg-gray-100 border-b border-gray-300 text-sm select-none shrink-0">
+    <div class="inline-flex rounded-md border border-gray-400 overflow-hidden shrink-0" role="group" aria-label="Mode">
+      <button
+        type="button"
+        class="px-2.5 py-0.5 text-xs font-medium transition-colors"
+        :class="mode === 'track' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+        :aria-pressed="mode === 'track'"
+        @click="$emit('update:mode', 'track')"
+      >Track</button>
+      <button
+        type="button"
+        class="px-2.5 py-0.5 text-xs font-medium border-l border-gray-400 transition-colors"
+        :class="mode === 'what-if' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+        :aria-pressed="mode === 'what-if'"
+        @click="$emit('update:mode', 'what-if')"
+      >What-if</button>
     </div>
-
-    <div class="h-5 w-px bg-gray-400"></div>
 
     <label
       class="flex items-center gap-1"
@@ -35,8 +29,6 @@
       />
       <span>Follow</span>
     </label>
-
-    <div class="h-5 w-px bg-gray-400"></div>
 
     <label class="flex items-center gap-1 cursor-pointer">
       <input
@@ -82,3 +74,13 @@ defineEmits<{
   (e: 'update:showAirports', value: boolean): void
 }>()
 </script>
+
+<style scoped>
+.title-bar {
+  min-height: 2.5rem;
+  padding-top: max(0.375rem, env(safe-area-inset-top));
+  padding-bottom: 0.375rem;
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+}
+</style>

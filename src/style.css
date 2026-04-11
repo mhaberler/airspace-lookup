@@ -2,15 +2,16 @@
 
 @layer base {
   html,
-  body,
-  #app {
-    height: 100%;
-  }
-
-  html,
   body {
+    height: 100%;
     margin: 0;
     padding: 0;
+  }
+
+  #app,
+  .app-root {
+    height: 100vh;
+    height: 100dvh;
   }
 }
 

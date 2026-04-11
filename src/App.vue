@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="h-screen flex flex-col">
+  <div class="app-root flex flex-col">
     <TitleBar
       v-model:mode="state.mode"
       v-model:follow="state.follow"
