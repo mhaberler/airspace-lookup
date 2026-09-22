@@ -15,7 +15,7 @@ import {
   type AirportItem,
 } from '../markerCallback'
 
-export const AIRPORT_FETCH_RADIUS_M = 300_000
+export const AIRPORT_FETCH_RADIUS_M = 200_000
 export const AIRSPACE_REFETCH_THRESHOLD_M = 10_000
 export const AIRPORT_REFETCH_THRESHOLD_M = AIRPORT_FETCH_RADIUS_M / 2
 const AIRSPACE_DIST_METERS = 10

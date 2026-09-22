@@ -14,7 +14,7 @@
 
 ## API
 - Airspace endpoint: `api.core.openaip.net/api/airspaces?pos={lat},{lng}&dist=10`
-- Airport endpoint: `api.core.openaip.net/api/airports?pos={lat},{lng}&dist=300000`
+- Airport endpoint: `api.core.openaip.net/api/airports?pos={lat},{lng}&dist=200000` (server max allowed `dist` is 200000; larger values 400)
 - Tile endpoint: `api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png`
 - `apiKey` is stripped from cache keys in the SW so it doesn't appear in Cache Storage
 
@@ -28,7 +28,7 @@ App has two modes selected in `TitleBar.vue`, plus three independent feature tog
 ## Airspace Refetch Thresholds
 
 - **Track mode airspace**: 10 km horizontal movement (`AIRSPACE_REFETCH_THRESHOLD_M` in `App.vue`)
-- **Airports (both modes)**: 150 km = `AIRPORT_FETCH_RADIUS_M / 2` (unchanged)
+- **Airports (both modes)**: 100 km = `AIRPORT_FETCH_RADIUS_M / 2`
 - Refetch is short-circuited if the corresponding toggle is off — `refreshAirports` returns early when `!state.showAirports`.
 
 ## Offline Error Handling
