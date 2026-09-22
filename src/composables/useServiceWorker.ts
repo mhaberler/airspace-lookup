@@ -7,7 +7,10 @@ export function useServiceWorker() {
 
   const updateSW = registerSW({
     immediate: true,
-    onNeedRefresh() { needRefresh.value = true },
+    onNeedRefresh() {
+      needRefresh.value = true
+      void updateSW(true)
+    },
     onOfflineReady() { offlineReady.value = true },
   })
 
