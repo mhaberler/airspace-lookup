@@ -25,11 +25,18 @@ const stripApiKey: WorkboxPlugin = {
     },
 }
 
-// Airspace point queries: api.core.openaip.net/api/airspaces
+// When VITE_API_BASE is set, requests go through the OpenAIP proxy instead
+// of hitting api.core.openaip.net / api.tiles.openaip.net directly.
+const proxyHostname = import.meta.env.VITE_API_BASE
+    ? new URL(import.meta.env.VITE_API_BASE as string).hostname
+    : null
+
+// Airspace point queries: {openaip|proxy}/api/airspaces
 // Triggered on map click, 10m radius. Many unique pos values → large entry limit.
 registerRoute(
     ({ url }) =>
-        url.hostname === 'api.core.openaip.net' && url.pathname.startsWith('/api/airspaces'),
+        (url.hostname === 'api.core.openaip.net' || url.hostname === proxyHostname) &&
+        url.pathname.startsWith('/api/airspaces'),
     new StaleWhileRevalidate({
         cacheName: 'openaip-airspaces',
         plugins: [
@@ -39,11 +46,12 @@ registerRoute(
     }),
 )
 
-// Airport area queries: api.core.openaip.net/api/airports
-// Triggered on map move, 300km radius. Larger payloads, fewer unique centroids.
+// Airport area queries: {openaip|proxy}/api/airports
+// Triggered on map move, 200km radius. Larger payloads, fewer unique centroids.
 registerRoute(
     ({ url }) =>
-        url.hostname === 'api.core.openaip.net' && url.pathname.startsWith('/api/airports'),
+        (url.hostname === 'api.core.openaip.net' || url.hostname === proxyHostname) &&
+        url.pathname.startsWith('/api/airports'),
     new StaleWhileRevalidate({
         cacheName: 'openaip-airports',
         plugins: [
@@ -53,10 +61,12 @@ registerRoute(
     }),
 )
 
-// OpenAIP raster tiles: api.tiles.openaip.net
+// OpenAIP raster tiles: api.tiles.openaip.net, or {proxy}/tiles/...
 // Immutable per z/x/y — cache-first with long TTL.
 registerRoute(
-    ({ url }) => url.hostname === 'api.tiles.openaip.net',
+    ({ url }) =>
+        url.hostname === 'api.tiles.openaip.net' ||
+        (url.hostname === proxyHostname && url.pathname.startsWith('/tiles/')),
     new CacheFirst({
         cacheName: 'openaip-tiles',
         plugins: [

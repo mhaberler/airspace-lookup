@@ -504,8 +504,12 @@ onMounted(() => {
     opacity: openFlightMapsOverlay.opacity,
     zIndex: openFlightMapsOverlay.zIndex,
   })
+  const apiBase = (import.meta.env.VITE_API_BASE as string | undefined) || 'https://api.tiles.openaip.net'
+  const tileUrl = import.meta.env.VITE_API_BASE
+    ? `${apiBase}/tiles/{z}/{x}/{y}.png`
+    : `${apiBase}/api/data/openaip/{z}/{x}/{y}.png?apiKey=${encodeURIComponent(import.meta.env.VITE_OPENAIP_KEY as string)}`
   const openAipLayer = L.tileLayer(
-    `https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=${encodeURIComponent(import.meta.env.VITE_OPENAIP_KEY as string)}`,
+    tileUrl,
     {
       attribution: '&copy; <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>',
       maxZoom: 14,

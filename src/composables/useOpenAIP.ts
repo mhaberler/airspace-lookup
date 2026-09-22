@@ -20,6 +20,10 @@ export const AIRSPACE_REFETCH_THRESHOLD_M = 10_000
 export const AIRPORT_REFETCH_THRESHOLD_M = AIRPORT_FETCH_RADIUS_M / 2
 const AIRSPACE_DIST_METERS = 10
 
+// When VITE_API_BASE is set, requests go through the OpenAIP proxy (which
+// injects the API key server-side) instead of calling OpenAIP directly.
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || 'https://api.core.openaip.net'
+const USE_PROXY = Boolean(import.meta.env.VITE_API_BASE)
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string
 
 const MIN_REQUEST_INTERVAL_MS = 2000
@@ -95,7 +99,7 @@ export function useOpenAIP() {
   let pendingAirportRefreshCenter: LatLng | null = null
 
   async function fetchAirspaceAt(lat: number, lng: number): Promise<AirspaceLookup> {
-    const url = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${AIRSPACE_DIST_METERS}&apiKey=${API_KEY}`
+    const url = `${API_BASE}/api/airspaces?pos=${lat},${lng}&dist=${AIRSPACE_DIST_METERS}${USE_PROXY ? '' : `&apiKey=${API_KEY}`}`
     try {
       const res = await throttledFetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -167,7 +171,7 @@ export function useOpenAIP() {
   }
 
   async function fetchAirportsAt(lat: number, lng: number): Promise<AirportItem[]> {
-    const url = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=${AIRPORT_FETCH_RADIUS_M}&apiKey=${API_KEY}`
+    const url = `${API_BASE}/api/airports?pos=${lat},${lng}&dist=${AIRPORT_FETCH_RADIUS_M}${USE_PROXY ? '' : `&apiKey=${API_KEY}`}`
     try {
       const res = await throttledFetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -34,3 +34,7 @@ docs/
 
 .cc-history
 
+# Cloudflare Worker local secrets
+proxy/.dev.vars
+proxy/.wrangler
+

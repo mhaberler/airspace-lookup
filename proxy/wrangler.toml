@@ -1,0 +1,6 @@
+name = "airspace-lookup-openaip-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://mhaberler.github.io"
