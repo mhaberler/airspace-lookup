@@ -22,13 +22,22 @@ const AIRSPACE_DIST_METERS = 10
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string
 
-const MIN_REQUEST_INTERVAL_MS = 1000
+const MIN_REQUEST_INTERVAL_MS = 2000
+const RETRY_DELAY_MS = 2000
 let throttleChain: Promise<void> = Promise.resolve()
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function throttledFetch(url: string): Promise<Response> {
   const run = throttleChain.then(async () => {
-    const res = await fetch(url)
-    await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS))
+    let res = await fetch(url)
+    if (res.status === 429) {
+      await delay(RETRY_DELAY_MS)
+      res = await fetch(url)
+    }
+    await delay(MIN_REQUEST_INTERVAL_MS)
     return res
   })
   throttleChain = run.then(
