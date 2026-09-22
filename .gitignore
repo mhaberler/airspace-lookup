@@ -32,3 +32,5 @@ test-results/
 .playwright-mcp/
 docs/
 
+.cc-history
+
