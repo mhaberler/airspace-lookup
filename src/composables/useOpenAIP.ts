@@ -22,6 +22,22 @@ const AIRSPACE_DIST_METERS = 10
 
 const API_KEY = import.meta.env.VITE_OPENAIP_KEY as string
 
+const MIN_REQUEST_INTERVAL_MS = 1000
+let throttleChain: Promise<void> = Promise.resolve()
+
+function throttledFetch(url: string): Promise<Response> {
+  const run = throttleChain.then(async () => {
+    const res = await fetch(url)
+    await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS))
+    return res
+  })
+  throttleChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 export interface LatLng {
   lat: number
   lng: number
@@ -72,7 +88,7 @@ export function useOpenAIP() {
   async function fetchAirspaceAt(lat: number, lng: number): Promise<AirspaceLookup> {
     const url = `https://api.core.openaip.net/api/airspaces?pos=${lat},${lng}&dist=${AIRSPACE_DIST_METERS}&apiKey=${API_KEY}`
     try {
-      const res = await fetch(url)
+      const res = await throttledFetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
 
@@ -144,7 +160,7 @@ export function useOpenAIP() {
   async function fetchAirportsAt(lat: number, lng: number): Promise<AirportItem[]> {
     const url = `https://api.core.openaip.net/api/airports?pos=${lat},${lng}&dist=${AIRPORT_FETCH_RADIUS_M}&apiKey=${API_KEY}`
     try {
-      const res = await fetch(url)
+      const res = await throttledFetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       return (data.items as AirportItem[]).filter((a) => a.frequencies?.length)
